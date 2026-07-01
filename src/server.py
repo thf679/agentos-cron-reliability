@@ -810,6 +810,76 @@ def get_cron_jobs():
         })
     return jobs
 
+def get_cron_health():
+    """Return cron health summary: total/failed/healthy counts + failure details.
+    Reads ~/.hermes/cron/jobs.json with atomic retry on JSON parse error.
+    """
+    p = HERMES_HOME / "cron" / "jobs.json"
+    if not p.exists():
+        return {
+            "total_jobs": 0, "healthy": 0, "failed": 0, "paused": 0,
+            "failures": [], "summary": "No cron jobs configured"
+        }
+    raw = []
+    for attempt in range(2):
+        try:
+            data = json.loads(p.read_text())
+            raw = data.get("jobs", [])
+            break
+        except json.JSONDecodeError:
+            if attempt == 0:
+                time.sleep(0.1)
+            else:
+                return {
+                    "total_jobs": 0, "healthy": 0, "failed": 0, "paused": 0,
+                    "failures": [], "summary": "jobs.json unreadable",
+                    "error": "JSON parse error"
+                }
+
+    healthy = 0
+    failed_jobs = []
+    failures = []
+    paused = 0
+
+    for r in raw:
+        enabled = r.get("enabled", True)
+        last_status = r.get("last_status")
+        if not enabled:
+            paused += 1
+            continue
+        if last_status == "error":
+            failed_jobs.append(r)
+            # Build descriptive error from available fields
+            last_error = r.get("last_error", "")
+            if not last_error:
+                # Derive error description
+                last_message = r.get("last_message", "")
+                if "timeout" in str(r.get("last_output", "")).lower() or "timeout" in str(last_message).lower():
+                    last_error = "Script timed out"
+                elif "ConnectError" in str(r.get("last_output", "")) or "ConnectError" in str(last_message):
+                    last_error = "Delivery failed: httpx.ConnectError"
+                else:
+                    last_error = "Unknown error"
+            failures.append({
+                "job_id": r.get("id"),
+                "name": r.get("name", "Unnamed"),
+                "last_status": last_status,
+                "last_run_at": r.get("last_run_at"),
+                "last_error": last_error,
+            })
+        else:
+            healthy += 1
+
+    return {
+        "total_jobs": len(raw),
+        "healthy": healthy,
+        "failed": len(failures),
+        "paused": paused,
+        "failures": failures,
+        "summary": f"{len(failures)} of {len(raw)} jobs have errors" if failures else "All jobs healthy",
+    }
+
+
 def get_cpu_pct():
     """Get CPU percentage from `ps -eo pcpu=` — per-process stats are live in proot
     even though aggregate /proc/stat is frozen. Clamped to 0–100."""
@@ -904,6 +974,9 @@ def harness_health():
     # ── cron_jobs_active ──
     cron_jobs = get_cron_jobs()
     result["cron_jobs_active"] = len([j for j in cron_jobs if j.get("enabled", True)])
+    result["cron_healthy"] = len([j for j in cron_jobs if j.get("enabled", True) and j.get("last_status") != "error"])
+    failed_jobs = [j for j in cron_jobs if j.get("enabled", True) and j.get("last_status") == "error"]
+    result["cron_failed"] = len(failed_jobs)
 
     # ── backup_age_hours ──
     backup_dir = Path(os.path.expanduser("~/workspace/backups/hermes-config"))
@@ -962,6 +1035,9 @@ def harness_health():
         score += 20
     elif cron_n >= 1:
         score += 10
+    # Penalty for failed cron jobs
+    if result["cron_failed"] > 0:
+        score -= 10
     # backup_fresh: <24h=30, <48h=20, <168h=10, else=0
     backup_h = result["backup_age_hours"]
     if backup_h is not None:
@@ -1005,6 +1081,7 @@ def build_snapshot():
         "agents": get_agents(),
         "sessions": get_sessions_summary(),
         "cron_jobs": get_cron_jobs(),
+        "cron_health": get_cron_health(),
         "kanban": get_kanban_stats(),
         "harness": harness_health(),
         "health": {
@@ -1103,6 +1180,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._json(get_tool_tracing(limit=20))
         if p == "/api/health-score":
             return self._json(get_health_score())
+        if p == "/api/cron/health":
+            return self._json(get_cron_health())
         if p == "/api/content/get":
             qs = {}
             if "?" in self.path:
