@@ -422,6 +422,13 @@ setInterval(updateClock, 1000);
   };
   var throughputHistory = [];
   var MAX_HISTORY = 40;
+  var cronHealth = null;
+  function fetchCronHealth() {
+    fetch("/api/cron/health")
+      .then(function(r) { return r.json(); })
+      .then(function(ch) { cronHealth = ch; })
+      .catch(function(e) { console.warn("cron health fetch failed", e); });
+  }
 
   function renderOverview(d) {
     var gw = d.gateway || {};
@@ -644,6 +651,27 @@ setInterval(updateClock, 1000);
       '</div>'
     });
 
+    // ── Cron Health ──
+    if (cronHealth) {
+      var ch = cronHealth;
+      var chAccent = ch.failed > 0 ? "var(--brand-red)" : "var(--brand-mint)";
+      var failedNames = (ch.failures || []).map(function(f) { return f.name; }).join(", ");
+      html += '<div style="margin-top:var(--space-4);">' +
+        GlassCard({ children:
+          '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+          '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;">Cron Health</div>' +
+          '<div style="font:700 var(--font-size-2xl) var(--font-display);color:' + chAccent + ';">' + ch.healthy + ' healthy / ' + ch.total_jobs + ' total</div>' +
+          (ch.failed > 0
+            ? '<div style="font:400 var(--font-size-sm) var(--font-mono);color:var(--brand-red);margin-top:var(--space-1);max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + failedNames.replace(/"/g, '&quot;') + '">⚠ ' + failedNames + '</div>'
+            : '<div style="font:400 var(--font-size-sm) var(--font-mono);color:var(--brand-mint);margin-top:var(--space-1);">All jobs healthy ✓</div>') +
+          '</div>' +
+          '<div style="font:700 36px var(--font-display);color:' + chAccent + ';line-height:1;">' + ch.healthy + '/' + ch.total_jobs + '</div>' +
+          '</div>'
+        }) +
+        '</div>';
+    }
+
     overviewEl.innerHTML = html;
     overviewEl.className = "";
 
@@ -735,6 +763,10 @@ setInterval(updateClock, 1000);
       }
     });
   refreshCtrl.start();
+
+  // Fetch cron health immediately and every 30s
+  fetchCronHealth();
+  setInterval(fetchCronHealth, 30000);
 
   // Wire refresh mode selector
   createRefreshSelector(refreshCtrl, document.getElementById('refresh-selector-container'));
