@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # cleanup-logs.sh — Monthly log retention (30-day, permanent deletion)
 # Run: bash cleanup-logs.sh
+#
+# ## Cron Config
+# This script is run by Hermes cron scheduler. For reliable delivery,
+# set the cron job config:
+#   deliver: local,telegram
+# This saves output to a local file first (always succeeds), then attempts
+# Telegram delivery as best-effort. If Telegram is unreachable, the output
+# file still exists at ~/.hermes/cron/output/8b095c51ae48.txt
+#   child_timeout_seconds: 120
 
 set -euo pipefail
 
@@ -58,5 +67,7 @@ conn.execute('VACUUM')
 total_after = conn.execute('SELECT COUNT(*) FROM agent_logs').fetchone()[0]
 conn.close()
 
-print(f"Monthly log cleanup ran: deleted {deleted} rows, {total_after} remaining (retention: {retention} days).")
+print(f"Monthly log cleanup ran: {total_before} rows before, {total_after} rows after, deleted {deleted} rows (retention: {retention} days).")
+print(f"Cleanup complete: {total_after} rows retained")
+print("CLEANUP_OK")
 PYEOF
