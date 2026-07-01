@@ -1,0 +1,290 @@
+/* ══════════════════════════════════════════════════════════
+   AgentOS Mission Control — Design Tokens v1
+   Single source of truth for all visual properties.
+   Dark theme, GitHub-inspired palette + glass-morphism.
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Color Palette ──────────────────────────── */
+  --bg:             #0d1117;
+  --bg-base:        #0d1117;
+  --surface:        #161b22;
+  --border:         #30363d;
+  --text:           #c9d1d9;
+  --text-primary:   #c9d1d9;
+  --dim:            #8b949e;
+  --text-muted:     #8b949e;
+  --green:          #3fb950;
+  --red:            #f85149;
+  --blue:           #58a6ff;
+  --orange:         #d2991d;
+  --purple:         #a371f7;
+
+  /* ── Brand Colors ───────────────────────────── */
+  --brand-violet:   #a371f7;
+  --brand-cyan:     #58a6ff;
+  --brand-teal:     #3fb950;
+  --brand-mint:     #7ee787;
+
+  /* ── Agent Colors ───────────────────────────── */
+  --agent-orchestrator: #a371f7;
+  --agent-analyst:      #58a6ff;
+  --agent-writer:       #3fb950;
+  --agent-marketer:     #d2991d;
+  --agent-coder:        #f85149;
+  --agent-architect:    #58a6ff;
+  --agent-reviewer:     #d2991d;
+  --agent-tester:       #3fb950;
+  --agent-devops:       #f778ba;
+
+  /* ── Donut Chart Agent Colors ───────────────── */
+  --agent-cyan:        #58a6ff;
+  --agent-pink:        #f778ba;
+  --agent-magenta:     #d2991d;
+  --agent-violet-glow: #a371f7;
+
+  /* ── Extended Brand Palette ─────────────────── */
+  --brand-red:    #f85149;
+  --brand-amber:  #d2991d;
+  --brand-gold:   #e2b93e;
+  --brand-pink:   #f778ba;
+
+  /* ── Glass / Orb Effects ────────────────────── */
+  --bg-glass:       rgba(22,27,34,0.85);
+  --border-glass:   rgba(48,54,61,0.6);
+  --blur-heavy:     24px;
+  --orb-violet:     radial-gradient(ellipse 80% 60% at 20% 20%, rgba(163,113,247,0.08), transparent);
+  --orb-cyan:       radial-gradient(ellipse 70% 50% at 80% 80%, rgba(88,166,255,0.06), transparent);
+  --grid-pattern:   repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(48,54,61,0.04) 1px, rgba(48,54,61,0.04) 2px);
+  --grid-size:      48px;
+
+  /* ── Status Colors ──────────────────────────── */
+  --status-active:  #3fb950;
+  --status-idle:    #d2991d;
+  --status-dormant: #8b949e;
+  --status-warning: #d2991d;
+
+  /* ── Spacing Scale ──────────────────────────── */
+  --space-px:       1px;
+  --space-05:       2px;
+  --space-1:        4px;
+  --space-2:        8px;
+  --space-3:        12px;
+  --space-4:        16px;
+  --space-5:        20px;
+  --space-6:        24px;
+  --space-8:        32px;
+  --space-10:       40px;
+  --space-12:       48px;
+
+  /* ── Typography ─────────────────────────────── */
+  --font-sans:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-display:   -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono:      'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-normal:    400;
+  --font-medium:    500;
+  --font-semibold:  600;
+  --font-bold:      700;
+
+  --font-size-xs:   0.625rem;
+  --text-xs:        0.625rem;
+  --font-size-sm:   0.75rem;
+  --text-sm:        0.75rem;
+  --font-size-base: 0.875rem;
+  --text-base:      0.875rem;
+  --font-size-lg:   1rem;
+  --text-lg:        1rem;
+  --text-xl:        1.125rem;
+  --font-size-2xl:  1.25rem;
+  --text-2xl:       1.25rem;
+  --text-3xl:       2rem;
+
+  --letter-spacing-wide: 0.05em;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* ── Borders & Radii ────────────────────────── */
+  --radius-sm:      4px;
+  --radius-md:      8px;
+  --radius-lg:      12px;
+  --radius-full:    9999px;
+
+  /* ── Shadows ────────────────────────────────── */
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 12px rgba(88,166,255,0.15);
+
+  /* ── Transitions & Motion ───────────────────── */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+
+  /* ── Status Color Pairs ─────────────────────── */
+  --status-ok-bg:     rgba(63,185,80,0.15);
+  --status-ok-text:   #3fb950;
+  --status-warn-bg:   rgba(210,153,29,0.15);
+  --status-warn-text: #d2991d;
+  --status-err-bg:    rgba(248,81,73,0.15);
+  --status-err-text:  #f85149;
+  --status-info-bg:   rgba(88,166,255,0.15);
+  --status-info-text: #58a6ff;
+  --status-muted-bg:  rgba(139,148,158,0.10);
+  --status-muted-text:#8b949e;
+
+  /* ── Z-Index Scale ──────────────────────────── */
+  --z-base:       0;
+  --z-dropdown:   100;
+  --z-sticky:     200;
+  --z-overlay:    300;
+  --z-modal:      400;
+  --z-toast:      500;
+
+  /* ── Responsive Breakpoints (read-only design tokens) ── */
+  --bp-mobile:  600px;
+  --bp-tablet:  1024px;
+
+  /* ── Responsive Spacing ── */
+  --content-padding-mobile: var(--space-3);
+  --content-padding-tablet: var(--space-4);
+  --content-padding-desktop: var(--space-6);
+  --nav-height-mobile: 48px;
+  --nav-height-tablet: 56px;
+  --nav-height-desktop: 56px;
+
+  /* ── Touch Targets (WCAG 2.1 AA) ── */
+  --touch-target-min: 44px;
+
+  /* ── Fluid Typography ── */
+  --font-size-fluid-body:    clamp(0.8125rem, 0.85rem + 0.1vw, 0.9375rem);
+  --font-size-fluid-heading: clamp(1.25rem, 1rem + 2vw, 2rem);
+  --font-size-fluid-mono:    clamp(0.6875rem, 0.7rem + 0.05vw, 0.8125rem);
+  --font-size-fluid-stat:    clamp(1rem, 0.9rem + 1vw, 1.5rem);
+}
+
+/* ── prefers-reduced-motion ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Mobile-first Responsive Breakpoints ────────────── */
+/* Base styles = mobile (<600px) */
+/* Tablet: 600px – 1024px */
+@media (min-width: 600px) and (max-width: 1024px) {
+  :root {
+    --content-padding: var(--content-padding-tablet);
+    --nav-height: var(--nav-height-tablet);
+  }
+}
+
+/* Desktop: >1024px */
+@media (min-width: 1025px) {
+  :root {
+    --content-padding: var(--content-padding-desktop);
+    --nav-height: var(--nav-height-desktop);
+  }
+}
+
+/* ── Touch-friendly interactive elements ───────────── */
+.nav-tab,
+button,
+.kv-badge,
+.log-pill,
+.lib-file-item,
+select,
+input[type="text"],
+input[type="search"],
+textarea {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+/* ── Keyframe Animations ──────────────────────────────── */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── SDLC Dashboard ──────────────────────────── */
+.sdlc-dash { padding: 0; }
+.sdlc-grid { display: flex; flex-direction: column; gap: var(--space-3); }
+.sdlc-col { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.sdlc-repo-name { font-weight: var(--font-semibold); color: var(--text-primary); }
+.sdlc-section { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+.sdlc-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.sdlc-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); color: var(--text-muted); margin-bottom: var(--space-1); }
+.sdlc-row { display: flex; gap: var(--space-2); align-items: center; padding: 2px 0; }
+.sdlc-key { min-width: 60px; font-size: var(--text-xs); color: var(--text-muted); }
+.sdlc-val { font-size: var(--text-sm); color: var(--text-primary); }
+.sdlc-muted { color: var(--text-muted); font-size: var(--text-sm); }
+.sdlc-check { font-size: var(--text-sm); padding: 1px 0; }
+
+.sdlc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-2); margin-top: var(--space-3); }
+.sdlc-stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); text-align: center; }
+.sdlc-stat-name { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--letter-spacing-wide); color: var(--text-muted); margin-bottom: var(--space-1); }
+.sdlc-stat-num { font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--blue); }
+.sdlc-stat-bar { height: 4px; background: var(--border); border-radius: var(--radius-full); margin-top: var(--space-1); }
+.sdlc-stat-fill { height: 100%; background: var(--green); border-radius: var(--radius-full); transition: width var(--transition-normal); }
+
+.sdlc-content-grid { display: flex; flex-direction: column; gap: var(--space-2); max-height: 280px; overflow-y: auto; }
+.sdlc-content-group { }
+.sdlc-content-file { display: flex; gap: var(--space-2); padding: 3px var(--space-2); font-size: var(--text-sm); }
+.sdlc-content-file:hover { background: var(--status-muted-bg); }
+
+/* SDLC agent name colors */
+.sdlc-agent-architect { color: var(--agent-architect); font-weight: var(--font-medium); }
+.sdlc-agent-reviewer  { color: var(--agent-reviewer); font-weight: var(--font-medium); }
+.sdlc-agent-tester    { color: var(--agent-tester); font-weight: var(--font-medium); }
+.sdlc-agent-devops    { color: var(--agent-devops); font-weight: var(--font-medium); }
+
+/* Grid helpers for SDLC layout */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+/* SDLC 600px breakpoint for single column */
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ── Table Scroll Container ── */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+.table-scroll table {
+  min-width: 600px;
+  white-space: nowrap;
+}
+
+/* ── Sticky First Column (mobile) ── */
+.table-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-base) !important;
+}
+.table-scroll thead th.table-sticky-col {
+  z-index: 2;
+  background: var(--bg-base) !important;
+}
+
+/* ── iOS smooth scrolling ── */
+.table-scroll-ios {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── SDLC responsive: single column at 600px ── */
+@media (max-width: 600px) {
+  .sdlc-grid { gap: var(--space-4); }
+}
+@media (min-width: 600px) {
+  .sdlc-responsive-stack { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 599px) {
+  .sdlc-responsive-stack { grid-template-columns: 1fr !important; }
+}

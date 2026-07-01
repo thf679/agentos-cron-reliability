@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentOS Mission Control</title>
+<link rel="stylesheet" href="/tokens.css">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background: var(--orb-violet), var(--orb-cyan);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  background: var(--grid-pattern);
+  background-size: var(--grid-size) var(--grid-size);
+  pointer-events: none; z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── Nav ── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--bg-glass);
+  backdrop-filter: var(--blur-heavy);
+  -webkit-backdrop-filter: var(--blur-heavy);
+  border-bottom: 1px solid var(--border-glass);
+  padding: 0 var(--space-4);
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.nav-ring {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(var(--brand-violet), var(--brand-cyan), var(--brand-teal), var(--brand-violet));
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-ring::after {
+  content: "";
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--bg-base);
+}
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--brand-mint);
+  margin-left: -14px;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.4); }
+}
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.nav-title {
+  font: 600 var(--font-size-lg) var(--font-display);
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ── Tabs ── */
+.nav-tabs {
+  display: flex; gap: var(--space-1);
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-full);
+  padding: 3px;
+}
+.nav-tab {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font: 500 var(--font-size-sm) var(--font-mono);
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all var(--transition-fast);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+.nav-tab:hover { color: var(--text-primary); }
+.nav-tab.active {
+  background: var(--text-primary);
+  color: var(--bg-base);
+}
+
+/* ── Status pill ── */
+.nav-status {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--status-active);
+  animation: pulse 2s ease-in-out infinite;
+}
+.status-text {
+  font: 400 var(--font-size-xs) var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+.status-clock {
+  font: 400 var(--font-size-sm) var(--font-mono);
+  color: var(--text-muted);
+  margin-left: var(--space-1);
+}
+
+/* ── Content area ── */
+.content {
+  position: relative; z-index: 1;
+  padding-top: 80px;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+  padding-bottom: var(--space-6);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.placeholder {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+  font: 400 var(--font-size-base) var(--font-display);
+}
+
+/* ── Hamburger Menu (mobile) ── */
+.nav-hamburger {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: var(--space-2);
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  line-height: 1;
+}
+.nav-menu {
+  display: none;
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  background: var(--bg-glass);
+  backdrop-filter: blur(var(--blur-heavy));
+  -webkit-backdrop-filter: blur(var(--blur-heavy));
+  border-bottom: 1px solid var(--border-glass);
+  padding: var(--space-2);
+  z-index: var(--z-dropdown);
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.nav-menu.open { display: flex; }
+.nav-menu .nav-tab {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  min-height: var(--touch-target-min);
+}
+
+/* ── Responsive: Mobile <600px ── */
+@media (max-width: 599px) {
+  .nav { height: var(--nav-height-mobile); padding: 0 var(--space-3); }
+  .nav-tabs { display: none; }
+  .nav-hamburger { display: flex; align-items: center; justify-content: center; }
+  .nav-status { gap: var(--space-1); }
+  .nav-title { font-size: var(--font-size-base); }
+  .content { padding-top: 64px; }
+}
+
+/* ── Responsive: Tablet 600-767px (hamburger still) ── */
+@media (min-width: 600px) and (max-width: 767px) {
+  .nav { height: var(--nav-height-mobile); padding: 0 var(--space-4); }
+  .nav-tabs { display: none; }
+  .nav-hamburger { display: flex; align-items: center; justify-content: center; }
+  .content { padding-top: 64px; }
+}
+
+/* ── Responsive: Tablet/Desktop >=768px — show tabs ── */
+@media (min-width: 768px) {
+  .nav-hamburger { display: none; }
+  .nav-menu { display: none !important; }
+  .nav-tabs { display: flex; }
+}
+
+/* ── Overview stat strip responsive ── */
+@media (max-width: 599px) {
+  /* 5-column → single column on mobile */
+  .stat-strip-mobile { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 600px) and (max-width: 1024px) {
+  /* 5-column → 2 columns on tablet */
+  .stat-strip-tablet { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* ── Footer stats responsive ── */
+@media (max-width: 599px) {
+  .footer-stats-5col { grid-template-columns: 1fr 1fr !important; }
+}
+@media (min-width: 600px) and (max-width: 1024px) {
+  .footer-stats-5col { grid-template-columns: 1fr 1fr 1fr !important; }
+}
+
+/* ── Agent cards responsive ── */
+@media (max-width: 599px) {
+  .agent-grid-resp { grid-template-columns: 1fr !important; }
+}
+
+/* ── System health card responsive ── */
+@media (max-width: 599px) {
+  .health-bars-mobile {
+    flex-direction: column !important;
+    gap: var(--space-3) !important;
+  }
+  .health-bar-item {
+    min-width: 120px;
+  }
+  .overview-top-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-3) !important;
+  }
+  .overview-radar-col { display: none; }
+}
+
+/* ── Agents tab stats responsive ── */
+@media (max-width: 599px) {
+  .agents-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .agents-stats-2x2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Throughput + Activity responsive ── */
+@media (max-width: 599px) {
+  .overview-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Sparkline canvas responsive ── */
+#sparkline {
+  max-width: 100%;
+}
+
+@media (max-width: 599px) {
+  #sparkline { height: 40px !important; }
+}
+
+/* ── Schedule tab responsive ── */
+@media (max-width: 599px) {
+  .schedule-2col { grid-template-columns: 1fr !important; }
+}
+
+/* ── Kanban responsive ── */
+@media (max-width: 599px) {
+  .kanban-3col { grid-template-columns: 1fr !important; }
+}
+
+/* ── Touch-friendly tab buttons ── */
+.nav-tab {
+  min-height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-ring"></div>
+    <div class="nav-dot"></div>
+    <span class="nav-title">Hermes</span>
+    <span id="badge-version"></span>
+  </div>
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">☰</button>
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" data-tab="overview">Overview</button>
+    <button class="nav-tab" data-tab="agents">Agents</button>
+    <button class="nav-tab" data-tab="tasks">Tasks</button>
+    <button class="nav-tab" data-tab="schedule">Schedule</button>
+    <button class="nav-tab" data-tab="content">Library</button>
+    <button class="nav-tab" data-tab="sdlc">SDLC</button>
+  </div>
+  <div class="nav-menu" id="nav-menu">
+    <button class="nav-tab active" data-tab="overview">Overview</button>
+    <button class="nav-tab" data-tab="agents">Agents</button>
+    <button class="nav-tab" data-tab="tasks">Tasks</button>
+    <button class="nav-tab" data-tab="schedule">Schedule</button>
+    <button class="nav-tab" data-tab="content">Library</button>
+    <button class="nav-tab" data-tab="sdlc">SDLC</button>
+  </div>
+  <div class="nav-status">
+    <div class="status-dot"></div>
+    <span class="status-text" id="status-label">All systems operational</span>
+    <span class="status-clock" id="clock">00:00:00</span>
+    <span id="data-age" style="font:400 var(--font-size-xs) var(--font-mono);color:var(--brand-mint);margin-left:var(--space-3);">Live ●</span>
+    <span id="refresh-selector-container"></span>
+  </div>
+</nav>
+
+<div class="content">
+  <div class="tab-panel active" id="panel-overview">
+    <div id="overview-loading" class="placeholder">Loading snapshot…</div>
+  </div>
+  <div class="tab-panel" id="panel-agents">
+    <div id="agents-loading" class="placeholder">Loading agents…</div>
+  </div>
+  <div class="tab-panel" id="panel-tasks">
+    <div id="tasks-loading" class="placeholder">Loading tasks…</div>
+  </div>
+  <div class="tab-panel" id="panel-schedule">
+    <div id="schedule-loading" class="placeholder">Loading schedule…</div>
+  </div>
+  <div class="tab-panel" id="panel-content">
+    <div id="content-loading" class="placeholder">Loading library…</div>
+  </div>
+</div>
+
+<!-- SDLC Dashboard -->
+<div class="tab-panel" id="panel-sdlc">
+  <div id="sdlc-loading" class="placeholder">Loading SDLC dashboard…</div>
+</div>
+
+<script src="/components.js"></script>
+<script src="/refresh.js"></script>
+<script>
+// ── Render Badge ──
+document.getElementById("badge-version").innerHTML = Badge({ text: "v1.0", color: "var(--text-muted)", variant: "subtle" });
+
+// ── Hamburger menu ──
+(function() {
+  var hamburger = document.getElementById("nav-hamburger");
+  var menu = document.getElementById("nav-menu");
+  if (hamburger && menu) {
+    hamburger.addEventListener("click", function(e) {
+      e.stopPropagation();
+      menu.classList.toggle("open");
+      hamburger.textContent = menu.classList.contains("open") ? "✕" : "☰";
+    });
+    // Close menu on outside click
+    document.addEventListener("click", function(e) {
+      if (!menu.contains(e.target) && e.target !== hamburger) {
+        menu.classList.remove("open");
+        hamburger.textContent = "☰";
+      }
+    });
+    // Close menu on ESC
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape" && menu.classList.contains("open")) {
+        menu.classList.remove("open");
+        hamburger.textContent = "☰";
+      }
+    });
+  }
+})();
+var tabs = document.querySelectorAll(".nav-tab");
+var panels = document.querySelectorAll(".tab-panel");
+tabs.forEach(function(tab) {
+  tab.addEventListener("click", function() {
+    tabs.forEach(function(t) { t.classList.remove("active"); });
+    panels.forEach(function(p) { p.classList.remove("active"); });
+    tab.classList.add("active");
+    var panel = document.getElementById("panel-" + tab.dataset.tab);
+    if (panel) panel.classList.add("active");
+    // Close mobile menu if open
+    var menu = document.getElementById("nav-menu");
+    var hamburger = document.getElementById("nav-hamburger");
+    if (menu && menu.classList.contains("open")) {
+      menu.classList.remove("open");
+      if (hamburger) hamburger.textContent = "☰";
+    }
+  });
+});
+
+// ── 24-hour clock ──
+function updateClock() {
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2, "0");
+  var m = String(now.getMinutes()).padStart(2, "0");
+  var s = String(now.getSeconds()).padStart(2, "0");
+  document.getElementById("clock").textContent = h + ":" + m + ":" + s;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── Overview tab — Live Ops Console (Phase 9) ──
+(function() {
+  var overviewEl = document.getElementById("overview-loading");
+  var currentData = null;
+  var directiveIdx = 0;
+  var agentKeys = ["orchestrator", "analyst", "writer", "marketer", "coder"];
+  var agentColors = {
+    orchestrator: "var(--agent-orchestrator)",
+    analyst: "var(--agent-analyst)",
+    writer: "var(--agent-writer)",
+    marketer: "var(--agent-marketer)",
+    coder: "var(--agent-coder)"
+  };
+  var throughputHistory = [];
+  var MAX_HISTORY = 40;
+
+  function renderOverview(d) {
+    var gw = d.gateway || {};
+    var vps = d.vps_health || {};
+    var act = d.activity || {};
+    var ses = d.sessions || {};
+    var kan = d.kanban || {};
+    var perAgent = act.per_agent || {};
+
+    // ── Radar data ──
+    var totalLogs = act.total || 1;
+    var radarDots = "";
+    var cx = 70, cy = 70, maxR = 55;
+    agentKeys.forEach(function(name, i) {
+      var share = ((perAgent[name] && perAgent[name].total) || 0) / totalLogs;
+      if (share > 0) {
+        var angle = (i / agentKeys.length) * Math.PI * 2 - Math.PI / 2;
+        var r = Math.max(8, share * maxR);
+        var x = cx + Math.cos(angle) * r;
+        var y = cy + Math.sin(angle) * r;
+        radarDots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4" fill="' + (agentColors[name] || "var(--brand-cyan)") + '" opacity="0.9"><animate attributeName="r" values="4;5;4" dur="2s" repeatCount="indefinite"/></circle>';
+      }
+    });
+
+    // ── Directive cycling ──
+    var entries = act.entries || [];
+    var directive = entries.length > 0 ? entries[directiveIdx % entries.length] : null;
+
+    // ── Throughput history ──
+    throughputHistory.push(totalLogs);
+    if (throughputHistory.length > MAX_HISTORY) throughputHistory.shift();
+
+    // ── Build HTML ──
+    var html = "";
+
+    // TOP: Live Ops Console
+    html += GlassCard({ children:
+      '<div class="overview-top-grid" style="display:grid;grid-template-columns:180px 1fr 1fr;gap:var(--space-5);">' +
+
+      // Left: Radar
+      '<div class="overview-radar-col" style="text-align:center;">' +
+      '<svg viewBox="0 0 140 140" style="width:180px;height:180px;">' +
+      '<circle cx="70" cy="70" r="55" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>' +
+      '<circle cx="70" cy="70" r="40" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>' +
+      '<circle cx="70" cy="70" r="25" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>' +
+      '<circle cx="70" cy="70" r="10" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>' +
+      '<line x1="10" y1="70" x2="130" y2="70" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>' +
+      '<line x1="70" y1="10" x2="70" y2="130" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>' +
+      '<g style="transform-origin:70px 70px;animation:radar-sweep 3s linear infinite;">' +
+      '<path d="M70 70 L70 15" stroke="var(--brand-cyan)" stroke-width="1" opacity="0.3" fill="none"/>' +
+      '</g>' +
+      radarDots +
+      '</svg>' +
+      '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);margin-top:var(--space-1);">RADAR</div>' +
+      '</div>' +
+
+      // Center: Current Directive
+      '<div>' +
+      '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-2);">Current Directive</div>' +
+      (directive
+        ? '<div style="font:400 var(--font-size-sm) var(--font-mono);color:var(--brand-cyan);line-height:1.5;">' +
+          '<span style="color:var(--text-muted);">' + (directive.agent_name || "?").toUpperCase() + '</span> · ' + (directive.task_description || "—") +
+          '</div>'
+        : '<div style="color:var(--text-muted);">No activity yet</div>') +
+      '<div style="margin-top:var(--space-4);font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-2);">Context Window</div>' +
+      '<div style="display:flex;flex-direction:column;gap:var(--space-1);">' +
+      agentKeys.map(function(name) {
+        var a = perAgent[name] || {total:0, completed:0, failed:0};
+        var pct = totalLogs > 0 ? (a.total / totalLogs) * 100 : 0;
+        return '<div style="display:flex;align-items:center;gap:var(--space-2);">' +
+          '<span style="font:400 var(--font-size-xs) var(--font-mono);color:' + (agentColors[name] || "var(--text-muted)") + ';width:80px;text-align:right;">' + name + '</span>' +
+          ProgressBar({ pct: pct, color: agentColors[name] || "var(--brand-cyan)", height: "4px" }) +
+          '<span style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);width:30px;">' + a.total + '</span>' +
+          '</div>';
+      }).join("") +
+      '</div></div>' +
+
+      // Right: System
+      '<div>' +
+      '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-3);">System</div>' +
+      (function() {
+        var cpuPct = vps.cpu_pct || 0;
+        var cpuColor = cpuPct > 85 ? "var(--brand-red)" : cpuPct > 70 ? "var(--brand-amber)" : "var(--brand-cyan)";
+        var ramPct = parseFloat(vps.ram_pct) || 0;
+        var ramColor = ramPct > 85 ? "var(--brand-red)" : ramPct > 70 ? "var(--brand-amber)" : "var(--brand-cyan)";
+        var dskPct = parseFloat(vps.disk_pct) || 0;
+        var dskColor = dskPct > 85 ? "var(--brand-red)" : dskPct > 70 ? "var(--brand-amber)" : "var(--brand-cyan)";
+        return '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
+          '<div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);margin-bottom:var(--space-1);">CPU ' + cpuPct + '%</div>' +
+          ProgressBar({ pct: cpuPct, color: cpuColor }) + '</div>' +
+          '<div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);margin-bottom:var(--space-1);">RAM ' + ramPct + '%</div>' +
+          ProgressBar({ pct: ramPct, color: ramColor }) + '</div>' +
+          '<div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);margin-bottom:var(--space-1);">Disk ' + dskPct + '%</div>' +
+          ProgressBar({ pct: dskPct, color: dskColor }) + '</div>' +
+          '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--brand-gold);margin-top:var(--space-2);">Hermes data · ' + (vps.disk_used || "—") + ' used</div>' +
+          '</div>';
+      })() +
+      '</div></div>'
+    });
+
+    // Stats Strip
+    var integrityPct = totalLogs > 0 ? Math.min(100, Math.round((((perAgent.orchestrator && perAgent.orchestrator.total) ? 1 : 0) + ((perAgent.analyst && perAgent.analyst.total) ? 1 : 0) + ((perAgent.writer && perAgent.writer.total) ? 1 : 0) + ((perAgent.marketer && perAgent.marketer.total) ? 1 : 0) + ((perAgent.coder && perAgent.coder.total) ? 1 : 0)) / 5 * 100)) : 0;
+    var responsive = agentKeys.filter(function(n) { return (perAgent[n] && perAgent[n].total > 0); }).length;
+    var tt = ses.token_totals || {};
+
+    html += '<div class="stat-strip-mobile stat-strip-tablet" style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--space-4);margin-top:var(--space-4);">' +
+      '<div style="border-top:2px solid var(--status-active);padding-top:var(--space-2);">' +
+      StatCard({ label: "Integrity", value: integrityPct + "%", accent: "var(--status-active)", subtext: responsive + " of 5 responsive", barWidth: integrityPct + "%" }) +
+      '</div>' +
+      '<div style="border-top:2px solid var(--brand-cyan);padding-top:var(--space-2);">' +
+      StatCard({ label: "Agent Calls", value: totalLogs.toLocaleString(), accent: "var(--brand-cyan)", barWidth: "100%" }) +
+      '</div>' +
+      '<div style="border-top:2px solid var(--agent-orchestrator);padding-top:var(--space-2);">' +
+      StatCard({ label: "Messages", value: (ses.message_count || 0).toLocaleString(), accent: "var(--agent-orchestrator)", barWidth: "100%" }) +
+      '</div>' +
+      '<div style="border-top:2px solid var(--brand-gold);padding-top:var(--space-2);">' +
+      StatCard({ label: "Tokens In", value: ((tt.input || 0) / 1000).toFixed(0) + "K", accent: "var(--brand-gold)", subtext: ((tt.output || 0) / 1000).toFixed(0) + "K out", barWidth: "100%" }) +
+      '</div>' +
+      '<div style="border-top:2px solid var(--brand-pink);padding-top:var(--space-2);">' +
+      StatCard({ label: "Cache Hits", value: ((tt.cache || 0) / 1000000).toFixed(1) + "M", accent: "var(--brand-pink)", barWidth: "100%" }) +
+      '</div>' +
+      '</div>';
+
+    // Footer: 5-cell grid
+    var errors = 0;
+    for (var k in perAgent) { errors += perAgent[k].failed || 0; if (perAgent.hasOwnProperty(k)) {} }
+    html += '<div class="footer-stats-5col" style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--space-2);margin-top:var(--space-4);padding:var(--space-3) var(--space-4);background:var(--bg-glass);border:1px solid var(--border-glass);border-radius:var(--radius-lg);">' +
+      '<div style="text-align:center;"><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);">QUEUE</div><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--text-primary);">' + (kan.total || 0) + '</div></div>' +
+      '<div style="text-align:center;"><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);">SESSIONS</div><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--text-primary);">' + (ses.session_count || 0) + '</div></div>' +
+      '<div style="text-align:center;"><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);">ERRORS</div><div style="font:700 var(--font-size-lg) var(--font-display);color:' + (errors === 0 ? 'var(--brand-mint)' : 'var(--brand-red)') + ';">' + errors + '</div></div>' +
+      '<div style="text-align:center;"><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);">TODAY</div><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--text-primary);">' + totalLogs + '</div></div>' +
+      '<div style="text-align:center;"><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);">UPTIME</div><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--brand-mint);">' + (gw.uptime || "—") + '</div></div>' +
+      '</div>';
+
+    // Bottom: Throughput + Activity
+    html += '<div class="overview-bottom-grid" style="display:grid;grid-template-columns:1.2fr 1fr;gap:var(--space-4);margin-top:var(--space-4);">';
+
+    // Throughput (sparkline)
+    html += GlassCard({ children:
+      '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-3);">Throughput</div>' +
+      '<div style="font:700 var(--font-size-2xl) var(--font-display);color:var(--brand-cyan);">' + totalLogs + '</div>' +
+      '<canvas id="sparkline" style="width:100%;height:60px;margin-top:var(--space-3);"></canvas>'
+    });
+
+    // Activity feed
+    var feedHtml = '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-3);">Activity</div>';
+    if (entries.length > 0) {
+      for (var i = 0; i < Math.min(8, entries.length); i++) {
+        var e = entries[i];
+        var sColor = e.status === "completed" ? "var(--brand-mint)" : e.status === "failed" ? "var(--brand-red)" : "var(--text-muted)";
+        feedHtml += '<div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) 0;border-bottom:1px solid rgba(255,255,255,0.04);">' +
+          Badge({ text: e.agent_name || "?", color: agentColors[e.agent_name] || "var(--text-muted)", variant: "subtle" }) +
+          '<span style="flex:1;font:400 var(--font-size-sm) var(--font-display);color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (e.task_description || "—") + '</span>' +
+          '<span style="font:400 var(--font-size-xs) var(--font-mono);color:' + sColor + ';">' + (e.status || "?") + '</span>' +
+          '</div>';
+      }
+    } else {
+      feedHtml += '<div style="color:var(--text-muted);font:400 var(--font-size-sm) var(--font-display);">No activity</div>';
+    }
+    html += GlassCard({ children: feedHtml });
+    html += '</div>';
+
+    // ── Harness Health ──
+    var hh = d.harness || {};
+    var score = hh.system_score || 0;
+    var scoreColor = score >= 80 ? "var(--brand-mint)" : score >= 50 ? "var(--brand-amber)" : "var(--brand-red)";
+    var bindingsOk = hh.channel_bindings_ok;
+    var backupH = hh.backup_age_hours;
+    var backupColor = backupH !== null && backupH !== undefined
+      ? (backupH < 24 ? "var(--brand-mint)" : backupH < 48 ? "var(--brand-amber)" : "var(--brand-red)")
+      : "var(--text-muted)";
+    var backupLabel = backupH !== null && backupH !== undefined
+      ? (backupH < 1 ? Math.round(backupH * 60) + "m ago" : Math.round(backupH) + "h ago")
+      : "No backups";
+
+    html += GlassCard({ children:
+      '<div style="padding:var(--space-1) 0;">' +
+      // Header row: title + score
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">' +
+      '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;">Harness Health</div>' +
+      '<div style="font:700 36px var(--font-display);color:' + scoreColor + ';line-height:1;">' + score + '</div>' +
+      '</div>' +
+      // Metric rows
+      '<div style="display:flex;flex-direction:column;gap:var(--space-2);">' +
+      // Channel Bindings
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);">Channel Bindings</span>' +
+      '<span style="font:500 var(--font-size-sm) var(--font-mono);color:' + (bindingsOk ? 'var(--brand-mint)' : 'var(--brand-red)') + ';">' +
+      (bindingsOk ? '✅ 8/8' : '❌') + '</span>' +
+      '</div>' +
+      // Agent Skills
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);">Agent Skills</span>' +
+      '<span style="font:500 var(--font-size-sm) var(--font-mono);color:var(--text-primary);">' + (hh.skills_exist || 0) + '</span>' +
+      '</div>' +
+      // Cron Jobs
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);">Cron Jobs</span>' +
+      '<span style="font:500 var(--font-size-sm) var(--font-mono);color:var(--text-primary);">' + (hh.cron_jobs_active || 0) + ' active</span>' +
+      '</div>' +
+      // Backups
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);">Backups</span>' +
+      '<span style="font:500 var(--font-size-sm) var(--font-mono);color:' + backupColor + ';">' + backupLabel + '</span>' +
+      '</div>' +
+      // Hardening Phase
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);">Hardening Phase</span>' +
+      '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--brand-violet);max-width:180px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (hh.hardening_phase || "None") + '">' + (hh.hardening_phase || "None") + '</span>' +
+      '</div>' +
+      '</div>' +
+      // ProgressBar
+      '<div style="margin-top:var(--space-4);">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:var(--space-1);">' +
+      '<span style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);">System Score</span>' +
+      '<span style="font:500 var(--font-size-xs) var(--font-mono);color:' + scoreColor + ';">' + score + '/100</span>' +
+      '</div>' +
+      ProgressBar({ pct: score, color: scoreColor, height: "8px" }) +
+      '</div>' +
+      '</div>'
+    });
+
+    overviewEl.innerHTML = html;
+    overviewEl.className = "";
+
+    // Draw sparkline after DOM update
+    setTimeout(drawSparkline, 50);
+
+    // Resize sparkline on window resize + orientation change
+    window.addEventListener("resize", function() { setTimeout(drawSparkline, 50); });
+    window.addEventListener("orientationchange", function() { setTimeout(drawSparkline, 150); });
+  }
+
+  function drawSparkline() {
+    var canvas = document.getElementById("sparkline");
+    if (!canvas || throughputHistory.length < 2) return;
+    var ctx = canvas.getContext("2d");
+    var w = canvas.parentElement.clientWidth - 32;
+    var h = 60;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.width = w + "px";
+
+    var max = Math.max.apply(null, throughputHistory) || 1;
+    var stepX = w / (throughputHistory.length - 1);
+
+    // Gradient
+    var grad = ctx.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, "#A78BFA");
+    grad.addColorStop(1, "#7DD3FC");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (var i = 0; i < throughputHistory.length; i++) {
+      var x = i * stepX;
+      var y = h - (throughputHistory[i] / max) * (h - 4) - 2;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Glowing dot at rightmost point
+    var lastX = (throughputHistory.length - 1) * stepX;
+    var lastY = h - (throughputHistory[throughputHistory.length - 1] / max) * (h - 4) - 2;
+    ctx.fillStyle = "#7DD3FC";
+    ctx.shadowColor = "#7DD3FC";
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Directive cycler ──
+  setInterval(function() {
+    directiveIdx++;
+    if (currentData) renderOverview(currentData);
+  }, 3000);
+
+  // ── Smart refresh controller (SSE primary, poll fallback) ──
+  var refreshCtrl = createRefreshController({
+    mode: 'sse',
+    endpoint: '/api/snapshot',
+    dataAgeEl: document.getElementById('data-age'),
+    renderFn: function(d) {
+      currentData = d;
+      renderOverview(d);
+    },
+    onError: function(err) {
+      console.warn('refresh: fetch error', err);
+    },
+    onStatusChange: function(status) {
+      var dot = document.querySelector('.status-dot');
+      if (status === 'sse-connected') {
+        if (dot) dot.style.background = 'var(--brand-mint)';
+      } else if (status === 'sse-error') {
+        if (dot) dot.style.background = 'var(--brand-amber)';
+      }
+    }
+  });
+
+  // Initial load via fetch
+  fetch("/api/snapshot")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      currentData = d;
+      renderOverview(d);
+    })
+    .catch(function(e) {
+      if (!currentData) {
+        overviewEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;padding:var(--space-6);">Snapshot unavailable</div>';
+      }
+    });
+  refreshCtrl.start();
+
+  // Wire refresh mode selector
+  createRefreshSelector(refreshCtrl, document.getElementById('refresh-selector-container'));
+})();
+
+// ════════════════════════════════════════════════════════
+// Agents tab — Phase 10
+// ════════════════════════════════════════════════════════
+(function() {
+  var agentsEl = document.getElementById("agents-loading");
+  var agentKeys = ["orchestrator", "analyst", "writer", "marketer", "coder"];
+  var agentColors = {
+    orchestrator: "var(--agent-orchestrator)",
+    analyst: "var(--agent-analyst)",
+    writer: "var(--agent-writer)",
+    marketer: "var(--agent-marketer)",
+    coder: "var(--agent-coder)"
+  };
+  var agentBadges = { orchestrator: "ORCH", analyst: "ANAL", writer: "WRTR", marketer: "MRKT", coder: "CODR" };
+  var agentStatusMap = { active: "var(--status-active)", idle: "var(--status-idle)", dormant: "var(--status-dormant)" };
+  var statusCounts = { active: 0, idle: 0, dormant: 0 };
+
+  function renderAgentsTab(d) {
+    var agents = d.agents || {};
+    var activity = d.activity || {};
+    var entries = activity.entries || [];
+
+    // Reset status counts
+    statusCounts = { active: 0, idle: 0, dormant: 0 };
+
+    var html = "";
+
+    // ── HEADER ──
+    html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-6);flex-wrap:wrap;gap:var(--space-4);">';
+    // Left: eyebrow + heading
+    html += '<div>';
+    html += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-1);">SUBAGENTS</div>';
+    html += '<div style="font:500 clamp(36px, 5vw, 60px) var(--font-display);color:var(--text-primary);line-height:1.1;">The Crew.</div>';
+    html += '</div>';
+
+    // Right: status summary GlassCard
+    html += GlassCard({ children:
+      '<div style="display:flex;gap:var(--space-4);">' +
+      '<div id="cell-active" style="text-align:center;min-width:70px;"><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--status-active);"></div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);">Active</div></div>' +
+      '<div id="cell-idle" style="text-align:center;min-width:70px;"><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--status-idle);"></div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);">Idle</div></div>' +
+      '<div id="cell-dormant" style="text-align:center;min-width:70px;"><div style="font:700 var(--font-size-lg) var(--font-display);color:var(--status-dormant);"></div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);">Dormant</div></div>' +
+      '</div>'
+    });
+    html += '</div>';
+
+    // ── AGENT CARDS ──
+    html += '<div class="agent-grid-resp" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4);margin-bottom:var(--space-6);">';
+
+    agentKeys.forEach(function(key) {
+      var a = agents[key] || {};
+      var color = agentColors[key] || "var(--text-muted)";
+      var stat = a.status || "dormant";
+      statusCounts[stat] = (statusCounts[stat] || 0) + 1;
+
+      // Platform pill color: Telegram = orchestrator color, others = brand-cyan
+      var platColor = key === "orchestrator" ? "var(--agent-orchestrator)" : "var(--brand-cyan)";
+      var statusColor = agentStatusMap[stat] || "var(--status-dormant)";
+      var successColor = (a.success_pct || 0) >= 100 ? "var(--brand-mint)" : (a.success_pct || 0) >= 80 ? "var(--brand-amber)" : "var(--brand-red)";
+
+      var card = '';
+      card += '<div style="border-top:2px solid ' + color + ';padding-top:var(--space-3);">';
+
+      // Top row: Badge + platform pill + status dot
+      card += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">';
+      card += Badge({ text: agentBadges[key] || key.toUpperCase().substring(0,4), color: color, variant: "solid" });
+      card += '<div style="display:flex;align-items:center;gap:var(--space-2);">';
+      card += '<span style="font:400 var(--font-size-xs) var(--font-mono);color:' + platColor + ';background:' + platColor + '15;padding:var(--space-05) var(--space-1);border-radius:var(--radius-full);">' + (a.platform || "?") + '</span>';
+      card += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + statusColor + ';"></span>';
+      card += '</div></div>';
+
+      // Agent name
+      card += '<div style="font:500 22px var(--font-display);color:var(--text-primary);margin-bottom:var(--space-1);">' + (a.name || key) + '</div>';
+
+      // Role description (two-line)
+      card += '<div style="font:400 var(--font-size-sm) var(--font-display);color:var(--text-muted);line-height:1.5;margin-bottom:var(--space-3);white-space:pre-line;">' + (a.role || "—") + '</div>';
+
+      // ThinBar activity chart
+      card += ThinBar({ values: a.daily || [0,0,0,0,0,0,0], color: color });
+
+      // 3-column stats
+      card += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-2);margin-top:var(--space-3);margin-bottom:var(--space-3);">';
+      card += '<div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);">Responses</div><div style="font:700 var(--font-size-base) var(--font-display);color:var(--text-primary);">' + (a.total || 0) + '</div></div>';
+      card += '<div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);">Success</div><div style="font:700 var(--font-size-base) var(--font-display);color:' + successColor + ';">' + (a.success_pct || 0) + '%</div></div>';
+      card += '<div><div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);">Model</div><div style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;" title="' + (a.model || "—") + '">' + (a.model || "—") + '</div></div>';
+      card += '</div>';
+
+      // 3px load bar
+      card += '<div style="height:3px;background:rgba(255,255,255,0.04);border-radius:var(--radius-full);margin-bottom:var(--space-2);">';
+      card += '<div style="height:100%;width:' + (a.share || 0) + '%;background:' + color + ';border-radius:var(--radius-full);transition:width var(--transition-normal);"></div></div>';
+
+      // Last task
+      card += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);">';
+      card += '↳ ' + (a.last_task || "No tasks yet") + '</div>';
+      if (a.last_at) {
+        card += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--dim);margin-top:var(--space-05);">' + Timestamp({ iso: a.last_at }) + '</div>';
+      }
+
+      card += '</div>';
+      html += GlassCard({ children: card });
+    });
+
+    html += '</div>';
+
+    // ════════════════════════════════════════════════════
+    // Agent Statistics — stat cards + donut chart
+    // ════════════════════════════════════════════════════
+    // Compute from data
+    var todayCount = 0, weekCount = 0;
+    (d.activity_by_day || []).forEach(function(v) { weekCount += v; });
+    todayCount = (d.activity_by_day || [0])[(d.activity_by_day || [0]).length - 1];
+
+    var mostActiveAgent = { key: "", count: 0 };
+    agentKeys.forEach(function(key) {
+      var a = agents[key] || {};
+      var sum = (a.daily || []).reduce(function(s, v) { return s + v; }, 0);
+      if (sum > mostActiveAgent.count) { mostActiveAgent.key = key; mostActiveAgent.count = sum; }
+    });
+
+    var totalCompleted = 0, totalAll = 0;
+    agentKeys.forEach(function(key) {
+      var a = agents[key] || {};
+      totalCompleted += a.completed || 0;
+      totalAll += a.total || 0;
+    });
+    var successRate = totalAll > 0 ? Math.round(totalCompleted / totalAll * 100) : 0;
+    var successColor = successRate >= 90 ? "var(--brand-mint)" : successRate >= 70 ? "var(--brand-amber)" : "var(--brand-red)";
+
+    // Donut slices
+    var donutKeys = ["orchestrator", "analyst", "writer", "marketer", "coder"];
+    var donutColors = ["var(--agent-orchestrator)", "var(--agent-cyan)", "var(--agent-pink)", "var(--agent-magenta)", "var(--agent-violet-glow)"];
+    var donutSlices = [];
+    var donutTotal = 0;
+    var perAgent = activity.per_agent || {};
+    donutKeys.forEach(function(key) {
+      var c = (perAgent[key] && perAgent[key].total) ? perAgent[key].total : 0;
+      donutSlices.push(c);
+      donutTotal += c;
+    });
+
+    html += '<div style="margin-top:var(--space-6);margin-bottom:var(--space-6);">';
+    html += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-4);">Agent Statistics</div>';
+    html += '<div class="agents-stats-grid" style="display:grid;grid-template-columns:1fr 300px;gap:var(--space-4);align-items:start;">';
+
+    // LEFT: 2×2 StatCards
+    html += '<div class="agents-stats-2x2" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">';
+    html += GlassCard({ children: StatCard({ label: "Tasks Today", value: todayCount, accent: "var(--status-warning)", barWidth: "100%" }) });
+    html += GlassCard({ children: StatCard({ label: "Tasks This Week", value: weekCount, accent: "var(--brand-cyan)", barWidth: "100%" }) });
+
+    var mostColor = agentColors[mostActiveAgent.key] || "var(--text-muted)";
+    var mostPct = weekCount > 0 ? Math.round(mostActiveAgent.count / weekCount * 100) : 0;
+    html += GlassCard({ children: StatCard({ label: "Most Active", value: (mostActiveAgent.key || "—").charAt(0).toUpperCase() + (mostActiveAgent.key || "—").slice(1), accent: mostColor, barWidth: mostPct + "%" }) });
+    html += GlassCard({ children: StatCard({ label: "Success Rate", value: successRate + "%", accent: successColor, barWidth: successRate + "%" }) });
+    html += '</div>';
+
+    // RIGHT: Donut + legend
+    html += '<div style="text-align:center;">';
+    html += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-2);">Task Distribution</div>';
+    html += GlassCard({ children:
+      '<div style="display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">' +
+      DonutChart({ slices: donutSlices, total: donutTotal, colors: donutColors }) +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:var(--space-1);">' +
+      donutKeys.map(function(key, i) {
+        var count = donutSlices[i] || 0;
+        var pct = donutTotal > 0 ? Math.round(count / donutTotal * 100) : 0;
+        var color = donutColors[i];
+        return '<div style="display:flex;align-items:center;justify-content:space-between;font:400 var(--font-size-xs) var(--font-mono);">' +
+          '<span style="display:flex;align-items:center;gap:var(--space-2);">' +
+          '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';"></span>' +
+          '<span style="color:var(--text-primary);">' + key.charAt(0).toUpperCase() + key.slice(1) + '</span></span>' +
+          '<span style="color:var(--text-muted);">' + pct + '%</span>' +
+          '</div>';
+      }).join("") +
+      '</div>'
+    });
+    html += '</div></div></div>';
+
+    // ── STATUS COUNTS UPDATE ──
+    setTimeout(function() {
+      var cellActive = document.getElementById("cell-active");
+      var cellIdle = document.getElementById("cell-idle");
+      var cellDormant = document.getElementById("cell-dormant");
+      if (cellActive) cellActive.querySelector("div").textContent = statusCounts.active || 0;
+      if (cellIdle) cellIdle.querySelector("div").textContent = statusCounts.idle || 0;
+      if (cellDormant) cellDormant.querySelector("div").textContent = statusCounts.dormant || 0;
+    }, 10);
+
+    // ── AGENT LOG TABLE ──
+    html += '<div style="margin-top:var(--space-6);">';
+    html += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-3);">Agent Log</div>';
+
+    // Filter pills
+    html += '<div style="display:flex;gap:var(--space-1);margin-bottom:var(--space-3);flex-wrap:wrap;" id="log-filters">';
+    html += '<button class="log-pill active" data-filter="all" style="padding:var(--space-05) var(--space-2);border-radius:var(--radius-full);border:1px solid var(--border-glass);background:var(--bg-glass);color:var(--text-primary);font:400 var(--font-size-xs) var(--font-mono);cursor:pointer;">ALL</button>';
+    agentKeys.forEach(function(key) {
+      html += '<button class="log-pill" data-filter="' + key + '" style="padding:var(--space-05) var(--space-2);border-radius:var(--radius-full);border:1px solid var(--border-glass);background:transparent;color:var(--text-muted);font:400 var(--font-size-xs) var(--font-mono);cursor:pointer;">' + key.toUpperCase() + '</button>';
+    });
+    html += '</div>';
+
+    // Log table
+    var rows = [];
+    for (var i = 0; i < Math.min(50, entries.length); i++) {
+      var e = entries[i];
+      rows.push([
+        e.created_at || "—",
+        Badge({ text: (e.agent_name || "?").toUpperCase(), color: agentColors[e.agent_name] || "var(--text-muted)", variant: "subtle" }),
+        (e.task_description || "—").substring(0, 60),
+        (e.model || "—"),
+        '<span style="color:' + (e.status === "completed" ? "var(--brand-mint)" : "var(--brand-red)") + ';font:500 var(--font-size-xs) var(--font-mono);">' + (e.status || "?") + '</span>'
+      ]);
+    }
+    html += GlassCard({ children:
+      '<div id="log-table-container" style="max-height:420px;overflow-y:auto;">' +
+      DataTable({
+        headers: ["Time", "Agent", "Task", "Model", "Status"],
+        rows: rows,
+        opts: { compact: true, monospace: false, maxHeight: "", scrollable: true }
+      }) +
+      '</div>'
+    });
+
+    html += '</div>';
+
+    agentsEl.innerHTML = html;
+    agentsEl.className = "";
+
+    // Wire filter pills
+    setTimeout(function() {
+      var pills = document.querySelectorAll(".log-pill");
+      pills.forEach(function(pill) {
+        pill.addEventListener("click", function() {
+          pills.forEach(function(p) { p.classList.remove("active"); p.style.background = "transparent"; p.style.color = "var(--text-muted)"; });
+          pill.classList.add("active");
+          pill.style.background = "var(--bg-glass)";
+          pill.style.color = "var(--text-primary)";
+          var filter = pill.dataset.filter;
+          filterLogTable(filter);
+        });
+      });
+    }, 20);
+  }
+
+  function filterLogTable(filter) {
+    var rows = document.querySelectorAll("#log-table-container table tbody tr");
+    rows.forEach(function(row) {
+      if (filter === "all") { row.style.display = ""; return; }
+      var badgeCell = row.querySelector("td:nth-child(2)");
+      if (badgeCell) {
+        var text = badgeCell.textContent.trim().toLowerCase();
+        row.style.display = text === filter ? "" : "none";
+      }
+    });
+  }
+
+  function loadAgentsData() {
+    fetch("/api/snapshot")
+      .then(function(r) { return r.json(); })
+      .then(function(d) { renderAgentsTab(d); })
+      .catch(function(e) {
+        agentsEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;padding:var(--space-6);">Agents data unavailable</div>';
+      });
+  }
+
+  // Load on tab activation or initial page load
+  loadAgentsData();
+  setInterval(loadAgentsData, 15000);
+
+  // SSE push for agents tab
+  var agentEvt = new EventSource("/events");
+  agentEvt.addEventListener("snapshot", function(e) {
+    try { renderAgentsTab(JSON.parse(e.data)); } catch (err) {}
+  });
+})();
+
+// ════════════════════════════════════════════════════════
+// Tasks tab — Phase 11: Kanban with add/move/delete
+// ════════════════════════════════════════════════════════
+(function() {
+  var tasksEl = document.getElementById("tasks-loading");
+  var tasks = [];
+  var showingAddForm = false;
+  var STATUS_ORDER = ["pending", "in_progress", "done"];
+  var STATUS_LABELS = { pending: "Pending", in_progress: "In Progress", done: "Done" };
+  var PRIORITY_COLORS = { low: "var(--status-muted-text)", medium: "var(--status-warn-text)", high: "var(--status-err-text)" };
+  var PRIORITY_BG = { low: "var(--status-muted-bg)", medium: "var(--status-warn-bg)", high: "var(--status-err-bg)" };
+
+  function columnCounts(status) {
+    return tasks.filter(function(t) { return t.status === status || (status === "done" && t.status === "completed"); }).length;
+  }
+
+  function moveTask(id, direction) {
+    var task = tasks.find(function(t) { return t.id === id; });
+    if (!task) return;
+    var idx = STATUS_ORDER.indexOf(task.status);
+    // Treat "completed" as "done" for move operations
+    if (idx === -1 && task.status === "completed") idx = STATUS_ORDER.indexOf("done");
+    var newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= STATUS_ORDER.length) return;
+    var oldStatus = task.status;
+    task.status = STATUS_ORDER[newIdx];
+    render(); // optimistic
+    fetch("/api/board/update?id=" + id, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: task.status })
+    }).catch(function() {
+      task.status = oldStatus; // revert
+      render();
+    });
+  }
+
+  function deleteTask(id) {
+    var idx = tasks.findIndex(function(t) { return t.id === id; });
+    if (idx === -1) return;
+    var removed = tasks.splice(idx, 1)[0];
+    render(); // optimistic
+    fetch("/api/board/delete?id=" + id, { method: "POST" }).catch(function() {
+      tasks.splice(idx, 0, removed); // revert
+      render();
+    });
+  }
+
+  function addTask(title, priority, notes) {
+    var tempId = "temp-" + Date.now();
+    var optimistic = {
+      id: tempId, title: title, status: "pending", priority: priority,
+      notes: notes, created_at: new Date().toISOString()
+    };
+    tasks.unshift(optimistic);
+    render();
+    fetch("/api/board/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title, priority: priority, notes: notes })
+    }).then(function(r) { return r.json(); })
+      .then(function(real) {
+        var idx = tasks.findIndex(function(t) { return t.id === tempId; });
+        if (idx !== -1) tasks[idx] = real;
+        render();
+      })
+      .catch(function() {
+        tasks = tasks.filter(function(t) { return t.id !== tempId; });
+        render();
+      });
+  }
+
+  function renderTaskCard(task) {
+    var color = PRIORITY_COLORS[task.priority] || "var(--text-muted)";
+    var bg = PRIORITY_BG[task.priority] || "var(--status-muted-bg)";
+    var isPending = task.status === "pending";
+    var isDone = task.status === "done";
+
+    return GlassCard({ children:
+      '<div style="display:flex;flex-direction:column;gap:var(--space-2);">' +
+      // Title row + priority chip
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-2);">' +
+      '<span style="font:500 var(--font-size-base) var(--font-display);color:var(--text-primary);flex:1;">' + (task.title || "Untitled") + '</span>' +
+      '<span style="font:500 var(--font-size-xs) var(--font-mono);color:' + color + ';background:' + bg + ';padding:var(--space-05) var(--space-1);border-radius:var(--radius-full);text-transform:uppercase;white-space:nowrap;">' + (task.priority || "medium") + '</span>' +
+      '</div>' +
+      // Optional notes
+      (task.notes ? '<div style="font:400 var(--font-size-sm) var(--font-display);color:var(--text-muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + task.notes + '</div>' : '') +
+      // Footer: timestamp + actions
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-1);padding-top:var(--space-1);border-top:1px solid var(--border-glass);">' +
+      '<span style="font:400 var(--font-size-xs) var(--font-mono);color:var(--dim);">' + Timestamp({ iso: task.created_at }) + '</span>' +
+      '<div style="display:flex;gap:var(--space-1);">' +
+      (!isDone ? '<button onclick="window._moveTask(\'' + task.id + '\',1)" style="background:transparent;border:1px solid var(--border-glass);color:var(--text-muted);padding:var(--space-05) var(--space-1);border-radius:var(--radius-sm);cursor:pointer;font:var(--font-size-sm) var(--font-mono);" title="Move right">▶</button>' : '') +
+      (!isPending ? '<button onclick="window._moveTask(\'' + task.id + '\',-1)" style="background:transparent;border:1px solid var(--border-glass);color:var(--text-muted);padding:var(--space-05) var(--space-1);border-radius:var(--radius-sm);cursor:pointer;font:var(--font-size-sm) var(--font-mono);" title="Move left">◀</button>' : '') +
+      '<button onclick="window._deleteTask(\'' + task.id + '\')" style="background:transparent;border:1px solid var(--border-glass);color:var(--status-err-text);padding:var(--space-05) var(--space-1);border-radius:var(--radius-sm);cursor:pointer;font:var(--font-size-sm) var(--font-mono);" title="Delete">✕</button>' +
+      '</div></div>' +
+      '</div>'
+    });
+  }
+
+  function render() {
+    var html = '';
+    var allEmpty = tasks.length === 0;
+
+    html += '<div class="kanban-3col" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);align-items:start;">';
+
+    STATUS_ORDER.forEach(function(status) {
+      var cols = tasks.filter(function(t) { return t.status === status || (status === "done" && t.status === "completed"); });
+      var count = cols.length;
+
+      html += '<div style="display:flex;flex-direction:column;gap:var(--space-3);">';
+      // Column header
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) var(--space-3);">';
+      html += '<span style="font:600 var(--font-size-sm) var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);">' + STATUS_LABELS[status] + '</span>';
+      html += Badge({ text: String(count), color: "var(--text-muted)", variant: "subtle" });
+      if (status === "pending") {
+        html += '<button onclick="window._showAddForm()" style="background:var(--bg-glass);border:1px solid var(--border-glass);color:var(--brand-cyan);padding:var(--space-05) var(--space-2);border-radius:var(--radius-full);cursor:pointer;font:500 var(--font-size-xs) var(--font-mono);margin-left:var(--space-2);">+ Add task</button>';
+      }
+      html += '</div>';
+
+      // Column body
+      html += '<div style="min-height:120px;">';
+      if (cols.length === 0) {
+        html += '<div style="text-align:center;padding:var(--space-6);color:var(--text-muted);font:400 var(--font-size-sm) var(--font-display);border:1px dashed var(--border-glass);border-radius:var(--radius-md);">No tasks</div>';
+      } else {
+        cols.forEach(function(task) {
+          html += '<div style="margin-bottom:var(--space-3);">' + renderTaskCard(task) + '</div>';
+        });
+      }
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+
+    // Add-task modal (inline at top of Pending)
+    if (showingAddForm) {
+      html += '<div style="position:fixed;inset:0;z-index:var(--z-modal);display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">';
+      html += GlassCard({ children:
+        '<div style="width:400px;max-width:90vw;">' +
+        '<div style="font:600 var(--font-size-lg) var(--font-display);color:var(--text-primary);margin-bottom:var(--space-4);">New Task</div>' +
+        '<input id="add-title" placeholder="Task title" style="width:100%;background:var(--bg-base);border:1px solid var(--border);color:var(--text-primary);padding:var(--space-2);border-radius:var(--radius-md);font:var(--font-size-base) var(--font-display);margin-bottom:var(--space-3);">' +
+        '<select id="add-priority" style="width:100%;background:var(--bg-base);border:1px solid var(--border);color:var(--text-primary);padding:var(--space-2);border-radius:var(--radius-md);font:var(--font-size-sm) var(--font-mono);margin-bottom:var(--space-3);">' +
+        '<option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>' +
+        '<textarea id="add-notes" placeholder="Notes (optional)" rows="3" style="width:100%;background:var(--bg-base);border:1px solid var(--border);color:var(--text-primary);padding:var(--space-2);border-radius:var(--radius-md);font:var(--font-size-sm) var(--font-display);resize:vertical;margin-bottom:var(--space-4);"></textarea>' +
+        '<div style="display:flex;gap:var(--space-2);justify-content:flex-end;">' +
+        '<button onclick="window._cancelAdd()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);cursor:pointer;font:var(--font-size-sm) var(--font-mono);">Cancel</button>' +
+        '<button onclick="window._submitAdd()" style="background:var(--brand-cyan);border:none;color:#000;padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);cursor:pointer;font:600 var(--font-size-sm) var(--font-mono);">Save</button>' +
+        '</div></div>'
+      });
+      html += '</div>';
+    }
+
+    tasksEl.innerHTML = html;
+    tasksEl.className = "";
+  }
+
+  function loadTasks() {
+    fetch("/api/board")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        tasks = data;
+        render();
+      })
+      .catch(function(e) {
+        tasksEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;padding:var(--space-6);">Tasks unavailable</div>';
+      });
+  }
+
+  // Wire callbacks to window for onclick handlers
+  window._moveTask = function(id, dir) { moveTask(id, dir); };
+  window._deleteTask = function(id) { deleteTask(id); };
+  window._showAddForm = function() { showingAddForm = true; render(); };
+  window._cancelAdd = function() { showingAddForm = false; render(); };
+  window._submitAdd = function() {
+    var title = document.getElementById("add-title").value.trim();
+    if (!title) return;
+    var priority = document.getElementById("add-priority").value;
+    var notes = document.getElementById("add-notes").value.trim();
+    showingAddForm = false;
+    addTask(title, priority, notes);
+  };
+
+  // Initial load + poll
+  loadTasks();
+  setInterval(loadTasks, 10000);
+})();
+
+// ════════════════════════════════════════════════════════
+// Schedule tab — Read-only cron job view
+// ════════════════════════════════════════════════════════
+(function() {
+  var schedEl = document.getElementById("schedule-loading");
+
+  function renderScheduleTab(d) {
+    var jobs = d.cron_jobs || [];
+    var hermesJobs = jobs.filter(function(j) { return j.label === "hermes"; });
+    var systemJobs = jobs.filter(function(j) { return j.label === "system"; });
+
+    function renderJobCard(job) {
+      var labelColor = job.label === "system" ? "var(--status-muted-text)" : "var(--brand-violet)";
+      var labelBg = job.label === "system" ? "var(--status-muted-bg)" : "rgba(163,113,247,0.15)";
+      var statusOk = job.last_status === "ok";
+      var stateColor = job.state === "scheduled" && job.enabled ? "var(--status-active)" :
+                       job.state === "paused" ? "var(--status-warn-text)" : "var(--status-muted-text)";
+
+      return GlassCard({ children:
+        '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
+        // Top row: name + label badge
+        '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+        '<span style="font:600 var(--font-size-lg) var(--font-display);color:var(--text-primary);">' + (job.name || "Unnamed") + '</span>' +
+        '<span style="font:500 var(--font-size-xs) var(--font-mono);color:' + labelColor + ';background:' + labelBg + ';padding:var(--space-05) var(--space-2);border-radius:var(--radius-full);text-transform:uppercase;letter-spacing:var(--letter-spacing-wide);">' + (job.label || "hermes") + '</span>' +
+        '</div>' +
+        // Schedule line + next run
+        '<div style="display:flex;align-items:center;gap:var(--space-3);font:400 var(--font-size-sm) var(--font-mono);">' +
+        '<span style="color:var(--text-muted);">SCHEDULE</span>' +
+        '<code style="color:var(--brand-cyan);background:rgba(88,166,255,0.08);padding:var(--space-05) var(--space-2);border-radius:var(--radius-sm);">' + (job.schedule_display || "—") + '</code>' +
+        '<span style="color:var(--dim);">·</span>' +
+        '<span style="color:var(--text-muted);">NEXT RUN</span>' +
+        '<span style="color:var(--text);">' + (job.next_run_at ? Timestamp({ iso: job.next_run_at }) : "—") + '</span>' +
+        '</div>' +
+        // Plain-English schedule description
+        '<div style="font:400 var(--font-size-sm) var(--font-display);color:var(--dim);">' + (job.schedule_desc || "—") + '</div>' +
+        // Last run status
+        (job.last_run_at ? '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--dim);">Last run: ' + Timestamp({ iso: job.last_run_at }) + ' · ' +
+          (statusOk ? '<span style="color:var(--status-active);">OK</span>' : '<span style="color:var(--status-err-text);">' + (job.last_status || "error") + '</span>') + '</div>' : '') +
+        '</div>'
+      });
+    }
+
+    function renderSection(label, jobList) {
+      var html = '';
+      html += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;margin-bottom:var(--space-3);">' + label + '</div>';
+      if (jobList.length === 0) {
+        html += '<div style="text-align:center;padding:var(--space-6);color:var(--text-muted);font:400 var(--font-size-sm) var(--font-display);border:1px dashed var(--border-glass);border-radius:var(--radius-md);">No scheduled jobs in this group.</div>';
+      } else {
+        jobList.forEach(function(job) {
+          html += '<div style="margin-bottom:var(--space-3);">' + renderJobCard(job) + '</div>';
+        });
+      }
+      return html;
+    }
+
+    var html = '';
+    html += '<div class="schedule-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);align-items:start;">';
+    html += '<div>' + renderSection("HERMES JOBS", hermesJobs) + '</div>';
+    html += '<div>' + renderSection("SYSTEM JOBS", systemJobs) + '</div>';
+    html += '</div>';
+
+    schedEl.innerHTML = html;
+    schedEl.className = "";
+  }
+
+  function loadSchedule() {
+    fetch("/api/snapshot")
+      .then(function(r) { return r.json(); })
+      .then(function(d) { renderScheduleTab(d); })
+      .catch(function() {
+        schedEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;padding:var(--space-6);">Schedule unavailable</div>';
+      });
+  }
+
+  loadSchedule();
+  var schedEvt = new EventSource("/events");
+  schedEvt.addEventListener("snapshot", function(e) {
+    try { renderScheduleTab(JSON.parse(e.data)); } catch (err) {}
+  });
+})();
+
+// ════════════════════════════════════════════════════════
+// Library tab — Phase 12: Content browser with View/Edit
+// ════════════════════════════════════════════════════════
+(function() {
+  var contentEl = document.getElementById("content-loading");
+  var apiBase = "/api/content";
+  var agents = ["orchestrator", "analyst", "writer", "marketer", "coder"];
+  var agentColors = {
+    orchestrator: "var(--agent-orchestrator)",
+    analyst: "var(--agent-analyst)",
+    writer: "var(--agent-writer)",
+    marketer: "var(--agent-marketer)",
+    coder: "var(--agent-coder)"
+  };
+  var agentNames = {
+    orchestrator: "Orchestrator", analyst: "Analyst", writer: "Writer",
+    marketer: "Marketer", coder: "Coder"
+  };
+  var currentAgent = null;
+  var currentFile = null;
+  var currentContent = "";
+  var editMode = false;
+  var contentData = {}; // {agent: [{filename, title, size, modified}, ...]}
+
+  function selectFile(agent, filename) {
+    currentAgent = agent;
+    currentFile = filename;
+    editMode = false;
+    fetch("/api/content/get?agent=" + encodeURIComponent(agent) + "&file=" + encodeURIComponent(filename))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) {
+          contentEl.querySelector(".content-panel").innerHTML = '<div style="padding:var(--space-6);color:var(--brand-red);text-align:center;">' + d.error + '</div>';
+          return;
+        }
+        currentContent = d.content || "";
+        renderContentPanel();
+        highlightSidebarItem(agent, filename);
+      })
+      .catch(function() {
+        contentEl.querySelector(".content-panel").innerHTML = '<div style="padding:var(--space-6);color:var(--brand-red);text-align:center;">Failed to load content</div>';
+      });
+  }
+
+  function highlightSidebarItem(agent, filename) {
+    var items = contentEl.querySelectorAll(".lib-file-item");
+    items.forEach(function(el) { el.classList.remove("active"); });
+    var target = contentEl.querySelector('.lib-file-item[data-agent="' + agent + '"][data-file="' + filename + '"]');
+    if (target) target.classList.add("active");
+  }
+
+  function toggleEdit() {
+    editMode = !editMode;
+    renderContentPanel();
+  }
+
+  function saveContent() {
+    if (!currentAgent || !currentFile) return;
+    var textarea = contentEl.querySelector(".lib-editor");
+    var newContent = textarea ? textarea.value : currentContent;
+    var saveBtn = contentEl.querySelector(".lib-save-btn");
+    if (saveBtn) { saveBtn.textContent = "Saving…"; saveBtn.disabled = true; }
+
+    fetch("/api/content/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent: currentAgent,
+        filename: currentFile,
+        content: newContent
+      })
+    }).then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          currentContent = newContent;
+          editMode = false;
+          renderContentPanel();
+          loadContentList(); // refresh file list for updated sizes
+        } else {
+          alert("Save failed: " + (d.error || "unknown"));
+          if (saveBtn) { saveBtn.textContent = "Save"; saveBtn.disabled = false; }
+        }
+      })
+      .catch(function() {
+        alert("Save failed: network error");
+        if (saveBtn) { saveBtn.textContent = "Save"; saveBtn.disabled = false; }
+      });
+  }
+
+  function renderContentPanel() {
+    var panel = contentEl.querySelector(".content-panel");
+    if (!panel) return;
+
+    var html = "";
+
+    if (!currentFile) {
+      html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font:400 var(--font-size-base) var(--font-display);">Select a file from the library</div>';
+      panel.innerHTML = html;
+      return;
+    }
+
+    // Header bar
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-glass);">';
+    html += '<div style="display:flex;align-items:center;gap:var(--space-3);">';
+    html += Badge({ text: agentNames[currentAgent] || currentAgent, color: agentColors[currentAgent] || "var(--text-muted)", variant: "subtle" });
+    html += '<span style="font:500 var(--font-size-base) var(--font-display);color:var(--text-primary);">' + currentFile + '</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:var(--space-2);">';
+    if (editMode) {
+      html += '<button onclick="window._libSave()" class="lib-save-btn" style="background:var(--brand-teal);border:none;color:#000;padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);cursor:pointer;font:600 var(--font-size-sm) var(--font-mono);">Save</button>';
+      html += '<button onclick="window._libCancel()" style="background:transparent;border:1px solid var(--border-glass);color:var(--text-muted);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);cursor:pointer;font:var(--font-size-sm) var(--font-mono);">Cancel</button>';
+    } else {
+      html += '<button onclick="window._libEdit()" style="background:var(--bg-glass);border:1px solid var(--border-glass);color:var(--brand-cyan);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);cursor:pointer;font:600 var(--font-size-sm) var(--font-mono);">Edit</button>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Content area
+    html += '<div style="flex:1;overflow-y:auto;padding:var(--space-4);">';
+    if (editMode) {
+      html += '<textarea class="lib-editor" style="width:100%;min-height:400px;background:var(--bg-base);border:1px solid var(--border);color:var(--text-primary);padding:var(--space-3);border-radius:var(--radius-md);font:var(--font-size-sm) var(--font-mono);resize:vertical;line-height:1.6;">' + escHtml(currentContent) + '</textarea>';
+    } else {
+      // Simple markdown-like rendering for headings, bold, italic
+      html += '<div class="lib-preview" style="font:400 var(--font-size-base) var(--font-display);color:var(--text-primary);line-height:1.7;white-space:pre-wrap;word-wrap:break-word;">' + renderMarkdown(currentContent) + '</div>';
+    }
+    html += '</div>';
+
+    panel.innerHTML = html;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderMarkdown(text) {
+    // Light rendering: headings, bold, italic, code blocks, lists
+    var lines = text.split("\n");
+    var out = "";
+    var inCodeBlock = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var esc = escHtml(line);
+
+      if (/^```/.test(line.trim())) {
+        inCodeBlock = !inCodeBlock;
+        out += inCodeBlock ? '<pre style="background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-md);padding:var(--space-3);margin:var(--space-2) 0;overflow-x:auto;font:var(--font-size-sm) var(--font-mono);color:var(--text-muted);">' : '</pre>\n';
+        continue;
+      }
+      if (inCodeBlock) {
+        out += esc + "\n";
+        continue;
+      }
+
+      if (/^### /.test(esc)) {
+        out += '<h3 style="font:600 var(--font-size-lg) var(--font-display);color:var(--text-primary);margin:var(--space-4) 0 var(--space-2);">' + esc.replace(/^### /, "") + '</h3>\n';
+      } else if (/^## /.test(esc)) {
+        out += '<h2 style="font:600 var(--font-size-xl) var(--font-display);color:var(--text-primary);margin:var(--space-5) 0 var(--space-2);border-bottom:1px solid var(--border-glass);padding-bottom:var(--space-1);">' + esc.replace(/^## /, "") + '</h2>\n';
+      } else if (/^# /.test(esc)) {
+        out += '<h1 style="font:700 var(--font-size-2xl) var(--font-display);color:var(--text-primary);margin:var(--space-5) 0 var(--space-2);border-bottom:1px solid var(--border-glass);padding-bottom:var(--space-2);">' + esc.replace(/^# /, "") + '</h1>\n';
+      } else if (/^- /.test(esc)) {
+        out += '<div style="padding-left:var(--space-4);margin:var(--space-1) 0;color:var(--text-primary);">• ' + esc.replace(/^- /, "") + '</div>\n';
+      } else if (/^\d+\. /.test(esc)) {
+        out += '<div style="padding-left:var(--space-4);margin:var(--space-1) 0;color:var(--text-primary);">' + esc + '</div>\n';
+      } else if (esc.trim() === "") {
+        out += '<br>\n';
+      } else {
+        // Inline formatting: **bold**, *italic*, `code`
+        esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--brand-cyan);">$1</strong>');
+        esc = esc.replace(/\*(.+?)\*/g, '<em style="color:var(--brand-violet);">$1</em>');
+        esc = esc.replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.06);padding:var(--space-05) var(--space-1);border-radius:var(--radius-sm);font:var(--font-size-sm) var(--font-mono);color:var(--brand-mint);">$1</code>');
+        out += '<div style="margin:var(--space-05) 0;">' + esc + '</div>\n';
+      }
+    }
+    if (inCodeBlock) out += '</pre>';
+    return out;
+  }
+
+  function renderSidebar() {
+    var sidebar = contentEl.querySelector(".lib-sidebar");
+    if (!sidebar) return;
+
+    var html = '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;padding:var(--space-3) var(--space-3) var(--space-2);">Library</div>';
+
+    agents.forEach(function(agent) {
+      var files = contentData[agent] || [];
+      html += '<div style="padding:0 var(--space-2);">';
+      // Agent group header
+      html += '<div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-2);margin-top:var(--space-1);">';
+      html += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + (agentColors[agent] || "var(--text-muted)") + ';"></span>';
+      html += '<span style="font:600 var(--font-size-xs) var(--font-mono);color:' + (agentColors[agent] || "var(--text-primary)") + ';letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;">' + (agentNames[agent] || agent) + '</span>';
+      html += '<span style="font:400 var(--font-size-xs) var(--font-mono);color:var(--dim);margin-left:auto;">' + files.length + '</span>';
+      html += '</div>';
+
+      if (files.length === 0) {
+        html += '<div style="padding:var(--space-1) var(--space-3);font:400 var(--font-size-xs) var(--font-display);color:var(--dim);">No files</div>';
+      } else {
+        files.forEach(function(f) {
+          var isActive = currentAgent === agent && currentFile === f.filename;
+          html += '<div class="lib-file-item' + (isActive ? ' active' : '') + '" data-agent="' + agent + '" data-file="' + f.filename + '" style="padding:var(--space-1) var(--space-2) var(--space-1) var(--space-4);cursor:pointer;border-radius:var(--radius-sm);margin:var(--space-05) 0;transition:background var(--transition-fast);' + (isActive ? 'background:rgba(255,255,255,0.06);' : '') + '" onclick="window._selectFile(\'' + agent + '\',\'' + f.filename.replace(/'/g, "\\'") + '\')">';
+          html += '<div style="font:400 var(--font-size-sm) var(--font-display);color:' + (isActive ? 'var(--text-primary)' : 'var(--text-muted)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (f.title || f.filename) + '</div>';
+          html += '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--dim);margin-top:var(--space-05);">' + formatSize(f.size) + '</div>';
+          html += '</div>';
+        });
+      }
+      html += '</div>';
+    });
+
+    sidebar.innerHTML = html;
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + " KB";
+    return (bytes/(1024*1024)).toFixed(1) + " MB";
+  }
+
+  function loadContentList() {
+    fetch(apiBase)
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        contentData = d;
+        renderAll();
+      })
+      .catch(function() {
+        contentEl.innerHTML = '<div style="color:var(--brand-red);text-align:center;padding:var(--space-6);">Library unavailable</div>';
+      });
+  }
+
+  function renderAll() {
+    var html = '';
+
+    // Layout: sidebar (280px) + content panel (flex-1)
+    html += '<div style="display:flex;height:calc(100vh - 140px);gap:0;border:1px solid var(--border-glass);border-radius:var(--radius-lg);overflow:hidden;">';
+
+    // Sidebar
+    html += '<div class="lib-sidebar" style="width:280px;min-width:280px;background:var(--bg-glass);border-right:1px solid var(--border-glass);overflow-y:auto;flex-shrink:0;"></div>';
+
+    // Content panel
+    html += '<div class="content-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>';
+
+    html += '</div>';
+
+    contentEl.innerHTML = html;
+    contentEl.className = "";
+
+    renderSidebar();
+    renderContentPanel();
+
+    // Hover effects for sidebar items
+    setTimeout(function() {
+      var items = contentEl.querySelectorAll(".lib-file-item");
+      items.forEach(function(item) {
+        item.addEventListener("mouseenter", function() {
+          if (!item.classList.contains("active")) {
+            item.style.background = "rgba(255,255,255,0.03)";
+          }
+        });
+        item.addEventListener("mouseleave", function() {
+          if (!item.classList.contains("active")) {
+            item.style.background = "";
+          }
+        });
+      });
+    }, 10);
+  }
+
+  // Wire global callbacks for onclick handlers
+  window._selectFile = function(agent, filename) { selectFile(agent, filename); };
+  window._libEdit = function() { toggleEdit(); };
+  window._libCancel = function() { editMode = false; renderContentPanel(); };
+  window._libSave = function() { saveContent(); };
+
+  // Load on init
+  loadContentList();
+
+  // Refresh on SSE content events
+  var contentEvt = new EventSource("/events");
+  contentEvt.addEventListener("content", function(e) {
+    try {
+      var d = JSON.parse(e.data);
+      if (d.action === "save" && d.agent === currentAgent && d.filename === currentFile) {
+        // Refresh current file
+        selectFile(currentAgent, currentFile);
+      }
+      loadContentList();
+    } catch (err) {}
+  });
+})();
+
+// ── SDLC Dashboard (Phase 9) ──
+(function() {
+  var panel = document.getElementById("panel-sdlc");
+  var loadingEl = document.getElementById("sdlc-loading");
+
+  function esc(s) {
+    if (s == null) return "\u2014";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function ts(v) {
+    if (!v || v === "None") return "\u2014";
+    try {
+      return new Date(v).toLocaleString(void 0, {
+        month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+    } catch (e) { return v; }
+  }
+
+  function badge(text, cls) {
+    return '<span class="kv-badge ' + cls + '">' + esc(text) + '</span>';
+  }
+
+  async function fetchJSON(url) {
+    try {
+      var r = await fetch(url);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; }
+  }
+
+  function renderProjects(projects) {
+    var h = '<div class="sdlc-grid">';
+    if (!projects || projects.length === 0) {
+      h += '<div class="card"><div class="card-bd placeholder">No SDLC projects registered.</div></div>';
+    }
+    for (var i = 0; i < projects.length; i++) {
+      var p = projects[i];
+      var statusCls = p.status === "active" ? "badge-ok" : "badge-muted";
+      var git = p.git || {};
+      var ctx = p.context_files || {};
+      var ci = p.ci || {};
+      var la = p.last_action || {};
+
+      h += '<div class="card">';
+      h += '<div class="card-hd">';
+      h += '<span class="sdlc-repo-name">' + esc(p.name) + '</span>';
+      h += '<span class="kv-badge ' + statusCls + '">' + esc(p.status) + '</span>';
+      h += '</div>';
+      h += '<div class="card-bd">';
+
+      // Git info
+      h += '<div class="sdlc-section"><div class="sdlc-label">Git</div>';
+      if (git.error) {
+        h += '<div class="sdlc-muted">' + esc(git.error) + '</div>';
+      } else {
+        h += '<div class="sdlc-row"><span class="sdlc-key">Branch</span><code>' + esc(git.branch || "?") + '</code></div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">HEAD</span><code>' + esc(git.head || "?") + '</code></div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">Last commit</span><span class="sdlc-val">' + esc(git.message || "") + '</span></div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">Author</span><span class="sdlc-val">' + esc(git.author || "") + '</span></div>';
+        if (git.dirty) h += '<div>' + badge("DIRTY", "badge-warn") + '</div>';
+      }
+      h += '</div>';
+
+      // Context files
+      h += '<div class="sdlc-section"><div class="sdlc-label">Context Files</div>';
+      var files = ["AGENTS.md", "ARCHITECTURE.md", "CONTRIBUTING.md"];
+      for (var j = 0; j < files.length; j++) {
+        var fn = files[j];
+        h += '<div class="sdlc-check">';
+        h += ctx[fn] ? '<span class="c-ok">\u2713</span> ' : '<span class="c-err">\u2717</span> ';
+        h += '<span class="sdlc-muted">' + fn + '</span></div>';
+      }
+      h += '</div>';
+
+      // CI state
+      if (ci.last_head) {
+        h += '<div class="sdlc-section"><div class="sdlc-label">CI/CD</div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">Poller</span>' + badge("ACTIVE", "badge-ok") + '</div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">Last poll</span><span class="sdlc-val">' + ts(ci.last_poll) + '</span></div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">Branches</span><span class="sdlc-val">' + esc(ci.branches) + '</span></div>';
+        h += '</div>';
+      }
+
+      // Last action
+      if (la.agent) {
+        h += '<div class="sdlc-section"><div class="sdlc-label">Last Action</div>';
+        h += '<div class="sdlc-row"><span class="sdlc-key">' + esc(la.agent) + '</span><span class="sdlc-val">' + esc(la.action) + '</span></div>';
+        h += '<div class="sdlc-muted" style="font-size:.72rem">' + ts(la.timestamp) + '</div>';
+        h += '</div>';
+      }
+
+      h += '</div></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function renderActivity(data) {
+    if (!data || data.total === 0) {
+      return '<div class="card"><div class="card-bd placeholder">No SDLC activity recorded yet.</div></div>';
+    }
+    var h = '<div class="card"><div class="card-hd">Activity Feed <span class="mono" style="color:var(--text-muted)">(' + data.total + ' entries)</span></div>';
+    h += '<div class="card-bd nopad"><div class="table-scroll table-scroll-ios"><table class="kv-table"><thead><tr>';
+    h += '<th>Agent</th><th>Task</th><th>Repo</th><th>PR</th><th>Status</th><th>When</th>';
+    h += '</tr></thead><tbody>';
+
+    var entries = data.entries || [];
+    var limit = Math.min(entries.length, 15);
+    for (var i = 0; i < limit; i++) {
+      var e = entries[i];
+      var stCls = e.status === "completed" ? "badge-ok" : (e.status === "failed" || e.status === "error" ? "badge-err" : "badge-info");
+      h += '<tr>';
+      h += '<td><span class="sdlc-agent-' + esc(e.agent_name) + '">' + esc(e.agent_name) + '</span></td>';
+      h += '<td class="trunc" title="' + esc(e.task_description) + '">' + esc(e.task_description) + '</td>';
+      h += '<td class="mono">' + esc(e.repo || "") + '</td>';
+      h += '<td class="mono">' + esc(e.pr_number || "") + '</td>';
+      h += '<td>' + badge(esc(e.status), stCls) + '</td>';
+      h += '<td class="num nowrap">' + ts(e.created_at) + '</td>';
+      h += '</tr>';
+    }
+    h += '</tbody></table></div></div></div>';
+
+    // Agent stats
+    var agents = data.agents || {};
+    var agentKeys = Object.keys(agents);
+    if (agentKeys.length > 0) {
+      h += '<div class="sdlc-stats">';
+      for (var a = 0; a < agentKeys.length; a++) {
+        var k = agentKeys[a];
+        var ag = agents[k];
+        var pct = ag.total > 0 ? Math.round(ag.completed / ag.total * 100) : 0;
+        h += '<div class="sdlc-stat-card">';
+        h += '<div class="sdlc-stat-name">' + esc(k) + '</div>';
+        h += '<div class="sdlc-stat-num">' + ag.total + '</div>';
+        h += '<div class="sdlc-stat-bar"><div class="sdlc-stat-fill" style="width:' + pct + '%"></div></div>';
+        h += '<div class="sdlc-muted" style="font-size:.68rem">' + pct + '% success</div>';
+        h += '</div>';
+      }
+      h += '</div>';
+    }
+    return h;
+  }
+
+  function renderReviews(data) {
+    if (!data) return "";
+    var h = '<div class="card"><div class="card-hd">Review Queue';
+    if (data.total_pending > 0) {
+      h += ' <span class="kv-badge badge-warn">' + data.total_pending + ' pending</span>';
+    }
+    h += '</div><div class="card-bd">';
+
+    var pending = data.pending_reviews || [];
+    var stale = data.stale_repos || [];
+
+    if (pending.length > 0) {
+      h += '<div class="sdlc-label">Pending Reviews</div>';
+      for (var i = 0; i < pending.length; i++) {
+        var p = pending[i];
+        h += '<div class="sdlc-row"><span class="mono">' + esc(p.repo || "") + '</span>';
+        h += '<span class="sdlc-val">' + esc(p.task_description) + '</span>';
+        h += '<span class="sdlc-muted">' + ts(p.created_at) + '</span></div>';
+      }
+    } else {
+      h += '<div class="placeholder">No pending reviews.</div>';
+    }
+
+    if (stale.length > 0) {
+      h += '<div class="sdlc-label" style="margin-top:.8rem">Stale Repos (no review activity)</div>';
+      for (var j = 0; j < stale.length; j++) {
+        var s = stale[j];
+        h += '<div class="sdlc-row"><span class="sdlc-key">' + esc(s.name) + '</span>';
+        h += '<span class="sdlc-muted">' + esc(s.note) + '</span></div>';
+      }
+    }
+    h += '</div></div>';
+    return h;
+  }
+
+  function renderContent(data) {
+    if (!data || data.total_files === 0) {
+      return '<div class="card"><div class="card-bd placeholder">No SDLC content files yet. Architecture docs, test reports, and review histories will appear here.</div></div>';
+    }
+    var repos = data.repos || {};
+    var h = '<div class="card"><div class="card-hd">Content Library <span class="mono" style="color:var(--text-muted)">(' + data.total_files + ' files)</span></div>';
+    h += '<div class="card-bd"><div class="sdlc-content-grid">';
+
+    var repoKeys = Object.keys(repos);
+    for (var r = 0; r < repoKeys.length; r++) {
+      var repoName = repoKeys[r];
+      var cats = repos[repoName];
+
+      // Handle both category-based (SDLC dir) and flat (agent dir) structures
+      var catKeys = Object.keys(cats);
+      if (catKeys.length > 0 && typeof cats[catKeys[0]] === "object" && Array.isArray(cats[catKeys[0]])) {
+        // Category-based
+        for (var c = 0; c < catKeys.length; c++) {
+          var cat = catKeys[c];
+          var files = cats[cat];
+          h += '<div class="sdlc-content-group"><div class="sdlc-label">' + esc(repoName) + ' / ' + esc(cat) + ' <span class="mono">(' + files.length + ')</span></div>';
+          for (var f = 0; f < files.length; f++) {
+            var file = files[f];
+            h += '<div class="sdlc-content-file"><span class="sdlc-key mono">' + esc(file.filename) + '</span>';
+            h += '<span class="sdlc-val">' + esc(file.title) + '</span>';
+            h += '<span class="sdlc-muted">' + (file.size > 1024 ? Math.round(file.size/1024) + "KB" : file.size + "B") + '</span></div>';
+          }
+          h += '</div>';
+        }
+      } else {
+        // Flat — agent-based
+        h += '<div class="sdlc-content-group"><div class="sdlc-label">' + esc(repoName) + ' <span class="mono">(' + cats.length + ')</span></div>';
+        for (var fi = 0; fi < cats.length; fi++) {
+          var f2 = cats[fi];
+          h += '<div class="sdlc-content-file"><span class="sdlc-key mono">' + esc(f2.filename) + '</span>';
+          h += '<span class="sdlc-val">' + esc(f2.title) + '</span></div>';
+        }
+        h += '</div>';
+      }
+    }
+
+    h += '</div></div></div>';
+    return h;
+  }
+
+  async function loadSDLC() {
+    if (loadingEl) {
+      loadingEl.innerHTML = '<div class="spinner"></div><div class="placeholder">Loading SDLC dashboard…</div>';
+    }
+
+    var [proj, act, rev, cont] = await Promise.all([
+      fetchJSON("/api/sdlc/projects"),
+      fetchJSON("/api/sdlc/activity"),
+      fetchJSON("/api/sdlc/reviews"),
+      fetchJSON("/api/sdlc/content")
+    ]);
+
+    var html = '<div class="sdlc-dash">';
+
+    // Row 1: Project Health + Review Queue
+    html += '<div class="grid grid-2">';
+    html += '<div class="sdlc-col">';
+    html += '<div class="card"><div class="card-hd">Project Health <span class="mono" style="color:var(--text-muted)">(' + (proj ? proj.active : 0) + ' active / ' + (proj ? proj.total : 0) + ' total)</span></div></div>';
+    html += renderProjects(proj ? proj.projects : []);
+    html += '</div>';
+    html += '<div class="sdlc-col">';
+    html += renderReviews(rev);
+    html += renderContent(cont);
+    html += '</div>';
+    html += '</div>';
+
+    // Row 2: Full-width activity feed
+    html += '<div style="margin-top:1rem">';
+    html += renderActivity(act);
+    html += '</div>';
+
+    html += '</div>';
+
+    if (loadingEl) {
+      loadingEl.outerHTML = html;
+    } else if (panel) {
+      panel.innerHTML = html;
+    }
+  }
+
+  // Load SDLC data when tab becomes active
+  function hookSDLC() {
+    var sdlcTab = document.querySelector('[data-tab="sdlc"]');
+    if (!sdlcTab) return;
+    var loaded = false;
+    sdlcTab.addEventListener("click", function() {
+      if (!loaded) {
+        loaded = true;
+        loadSDLC();
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hookSDLC);
+  } else {
+    hookSDLC();
+  }
+})();
+</script>
+
+</body>
+</html>
