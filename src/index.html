@@ -620,7 +620,10 @@ setInterval(updateClock, 1000);
       // Cron Jobs
       '<div style="display:flex;align-items:center;justify-content:space-between;">' +
       '<span style="font:400 var(--font-size-sm) var(--font-mono);color:var(--text-muted);">Cron Jobs</span>' +
-      '<span style="font:500 var(--font-size-sm) var(--font-mono);color:var(--text-primary);">' + (hh.cron_jobs_active || 0) + ' active</span>' +
+      '<span style="font:500 var(--font-size-sm) var(--font-mono);color:' + ((hh.cron_failed || 0) > 0 ? 'var(--brand-red)' : 'var(--brand-mint)') + ';\">' +
+      (hh.cron_healthy || hh.cron_jobs_active || 0) + '/' + (hh.cron_jobs_active || 0) + ' healthy' +
+      ((hh.cron_failed || 0) > 0 ? ' ⚠ ' + (hh.cron_failed || 0) + ' failed' : '') +
+      '</span>' +
       '</div>' +
       // Backups
       '<div style="display:flex;align-items:center;justify-content:space-between;">' +
@@ -641,6 +644,35 @@ setInterval(updateClock, 1000);
       '</div>' +
       ProgressBar({ pct: score, color: scoreColor, height: "8px" }) +
       '</div>' +
+      '</div>'
+    });
+
+    // ── Cron Health ──
+    var ch = d.cron_health || {};
+    var cronFailed = ch.failed || 0;
+    html += GlassCard({ children:
+      '<div style="padding:var(--space-1) 0;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">' +
+      '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);letter-spacing:var(--letter-spacing-wide);text-transform:uppercase;">Cron Health</div>' +
+      '<div style="font:700 var(--font-size-lg) var(--font-display);color:' + (cronFailed > 0 ? 'var(--brand-red)' : 'var(--brand-mint)') + ';">' +
+      (ch.summary || '...') +
+      '</div></div>' +
+      '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">' +
+      StatCard({ label: 'Total', value: ch.total_jobs || 0, color: 'var(--brand-violet)' }) +
+      StatCard({ label: 'Healthy', value: ch.healthy || 0, color: 'var(--brand-mint)' }) +
+      StatCard({ label: 'Failed', value: cronFailed, color: cronFailed > 0 ? 'var(--brand-red)' : 'var(--text-muted)' }) +
+      StatCard({ label: 'Paused', value: ch.paused || 0, color: 'var(--text-muted)' }) +
+      '</div>' +
+      (ch.failures && ch.failures.length > 0 ?
+        '<div style="margin-top:var(--space-2);">' +
+        '<div style="font:400 var(--font-size-xs) var(--font-mono);color:var(--text-muted);margin-bottom:var(--space-1);">Failed Jobs</div>' +
+        ch.failures.map(function(f) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-1) var(--space-2);background:rgba(248,81,73,0.08);border-radius:var(--radius-sm);margin-bottom:var(--space-1);">' +
+            '<span style="font:500 var(--font-size-sm) var(--font-mono);color:var(--text-primary);">' + (f.name || f.job_id) + '</span>' +
+            '<span style="font:400 var(--font-size-xs) var(--font-mono);color:var(--brand-red);">' + (f.last_error || 'error') + '</span>' +
+          '</div>';
+        }).join('') +
+        '</div>' : '') +
       '</div>'
     });
 
