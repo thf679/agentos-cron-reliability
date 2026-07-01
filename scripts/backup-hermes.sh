@@ -3,6 +3,7 @@
 # Archives: config.yaml, .env, skills/, okf_memory/ (git bundle), cron/jobs.json
 # Output: ~/workspace/backups/hermes-config/hermes-backup-YYYYMMDD-HHMMSS.tar.gz
 # Retention: keep last 3 backups
+# Cron should set child_timeout_seconds=180 to allow headroom (tar+gzip+bundle+cp)
 
 set -euo pipefail
 
@@ -49,7 +50,7 @@ fi
 # OKF knowledge base as git bundle (includes full phase/project history)
 if [ -d "${HERMES_HOME}/okf_memory" ]; then
   cd "${HERMES_HOME}/okf_memory"
-  git bundle create "${TMPDIR}/hermes/okf_memory.bundle" --all 2>/dev/null || echo "⚠️ git bundle failed"
+  timeout 120 git bundle create "${TMPDIR}/hermes/okf_memory.bundle" --since=7.days 2>/dev/null || echo "⚠️ git bundle timed out or failed"
 else
   echo "⚠️ no okf_memory/"
 fi
@@ -59,7 +60,7 @@ DASHBOARD_SRC="${HERMES_HOME}/projects/repo-003/src"
 DASHBOARD_BACKUP="${TMPDIR}/hermes/dashboard/"
 if [ -d "$DASHBOARD_SRC" ]; then
   mkdir -p "$DASHBOARD_BACKUP"
-  for f in refresh.js index.html dashboard.html tokens.css components.js; do
+  for f in refresh.js index.html tokens.css components.js; do
     if [ -f "${DASHBOARD_SRC}/${f}" ]; then
       cp "${DASHBOARD_SRC}/${f}" "${DASHBOARD_BACKUP}/"
       echo "  ✅ dashboard/${f}"
