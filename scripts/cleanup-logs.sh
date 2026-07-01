@@ -68,4 +68,6 @@ total_after = conn.execute('SELECT COUNT(*) FROM agent_logs').fetchone()[0]
 conn.close()
 
 print(f"Monthly log cleanup ran: {total_before} rows before, {total_after} rows after, deleted {deleted} rows (retention: {retention} days).")
+print(f"Cleanup complete: {total_after} rows retained")
+print("CLEANUP_OK")
 PYEOF
