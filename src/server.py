@@ -810,6 +810,61 @@ def get_cron_jobs():
         })
     return jobs
 
+def get_cpu_pct():
+    """Get CPU percentage from `ps -eo pcpu=` — per-process stats are live in proot
+    even though aggregate /proc/stat is frozen. Clamped to 0–100."""
+    try:
+        import subprocess
+        r = subprocess.run(
+            ["ps", "-eo", "pcpu="],
+            capture_output=True, text=True, timeout=3
+        )
+        if r.returncode == 0:
+            total = sum(float(x) for x in r.stdout.strip().split() if x)
+            return round(min(total, 100.0), 1)   # cap multi-core overshoot
+    except Exception:
+        pass
+    return None
+
+def get_system():
+    """Basic system stats from /proc (Linux). Returns cpu_pct, ram_pct, disk_pct
+    as 0–100 numeric percentages for the Overview UI bar widths."""
+    info = {}
+    info["cpu_pct"] = get_cpu_pct()
+    # Load averages
+    try:
+        with open("/proc/loadavg") as f:
+            parts = f.read().split()
+            info["load_1m"] = float(parts[0])
+            info["load_5m"] = float(parts[1])
+    except: pass
+    # Memory — compute ram_pct as 0–100 numeric
+    try:
+        with open("/proc/meminfo") as f:
+            mem = {}
+            for line in f:
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    mem[k.strip()] = int(v.strip().split()[0])
+            total = mem.get("MemTotal", 0)
+            avail = mem.get("MemAvailable", 0)
+            if not avail:
+                avail = mem.get("MemFree", 0) + mem.get("Buffers", 0) + mem.get("Cached", 0)
+            info["ram_total"] = f"{total // 1024} MB"
+            info["ram_used"] = f"{(total - avail) // 1024} MB"
+            info["ram_pct"] = round(((total - avail) / total) * 100, 1) if total else 0
+    except: pass
+    # Disk — compute disk_pct as 0–100 numeric
+    try:
+        s = os.statvfs("/")
+        info["disk_total"] = f"{s.f_frsize * s.f_blocks // (1024**3)} GB"
+        info["disk_used"] = f"{s.f_frsize * (s.f_blocks - s.f_bavail) // (1024**3)} GB"
+        total_bytes = s.f_frsize * s.f_blocks
+        avail_bytes = s.f_frsize * s.f_bavail
+        info["disk_pct"] = round(((total_bytes - avail_bytes) / total_bytes) * 100, 1) if total_bytes else 0
+    except: pass
+    return info
+
 def get_cron_health():
     """Return cron health summary: total/failed/healthy counts + failure details.
     Reads ~/.hermes/cron/jobs.json with atomic retry on JSON parse error.
@@ -880,60 +935,6 @@ def get_cron_health():
     }
 
 
-def get_cpu_pct():
-    """Get CPU percentage from `ps -eo pcpu=` — per-process stats are live in proot
-    even though aggregate /proc/stat is frozen. Clamped to 0–100."""
-    try:
-        import subprocess
-        r = subprocess.run(
-            ["ps", "-eo", "pcpu="],
-            capture_output=True, text=True, timeout=3
-        )
-        if r.returncode == 0:
-            total = sum(float(x) for x in r.stdout.strip().split() if x)
-            return round(min(total, 100.0), 1)   # cap multi-core overshoot
-    except Exception:
-        pass
-    return None
-
-def get_system():
-    """Basic system stats from /proc (Linux). Returns cpu_pct, ram_pct, disk_pct
-    as 0–100 numeric percentages for the Overview UI bar widths."""
-    info = {}
-    info["cpu_pct"] = get_cpu_pct()
-    # Load averages
-    try:
-        with open("/proc/loadavg") as f:
-            parts = f.read().split()
-            info["load_1m"] = float(parts[0])
-            info["load_5m"] = float(parts[1])
-    except: pass
-    # Memory — compute ram_pct as 0–100 numeric
-    try:
-        with open("/proc/meminfo") as f:
-            mem = {}
-            for line in f:
-                if ":" in line:
-                    k, v = line.split(":", 1)
-                    mem[k.strip()] = int(v.strip().split()[0])
-            total = mem.get("MemTotal", 0)
-            avail = mem.get("MemAvailable", 0)
-            if not avail:
-                avail = mem.get("MemFree", 0) + mem.get("Buffers", 0) + mem.get("Cached", 0)
-            info["ram_total"] = f"{total // 1024} MB"
-            info["ram_used"] = f"{(total - avail) // 1024} MB"
-            info["ram_pct"] = round(((total - avail) / total) * 100, 1) if total else 0
-    except: pass
-    # Disk — compute disk_pct as 0–100 numeric
-    try:
-        s = os.statvfs("/")
-        info["disk_total"] = f"{s.f_frsize * s.f_blocks // (1024**3)} GB"
-        info["disk_used"] = f"{s.f_frsize * (s.f_blocks - s.f_bavail) // (1024**3)} GB"
-        total_bytes = s.f_frsize * s.f_blocks
-        avail_bytes = s.f_frsize * s.f_bavail
-        info["disk_pct"] = round(((total_bytes - avail_bytes) / total_bytes) * 100, 1) if total_bytes else 0
-    except: pass
-    return info
 
 def harness_health():
     """AgentOS Harness Health — live system checks.
@@ -974,9 +975,6 @@ def harness_health():
     # ── cron_jobs_active ──
     cron_jobs = get_cron_jobs()
     result["cron_jobs_active"] = len([j for j in cron_jobs if j.get("enabled", True)])
-    result["cron_healthy"] = len([j for j in cron_jobs if j.get("enabled", True) and j.get("last_status") != "error"])
-    failed_jobs = [j for j in cron_jobs if j.get("enabled", True) and j.get("last_status") == "error"]
-    result["cron_failed"] = len(failed_jobs)
 
     # ── backup_age_hours ──
     backup_dir = Path(os.path.expanduser("~/workspace/backups/hermes-config"))
@@ -1035,9 +1033,6 @@ def harness_health():
         score += 20
     elif cron_n >= 1:
         score += 10
-    # Penalty for failed cron jobs
-    if result["cron_failed"] > 0:
-        score -= 10
     # backup_fresh: <24h=30, <48h=20, <168h=10, else=0
     backup_h = result["backup_age_hours"]
     if backup_h is not None:
@@ -1081,7 +1076,6 @@ def build_snapshot():
         "agents": get_agents(),
         "sessions": get_sessions_summary(),
         "cron_jobs": get_cron_jobs(),
-        "cron_health": get_cron_health(),
         "kanban": get_kanban_stats(),
         "harness": harness_health(),
         "health": {
@@ -1144,6 +1138,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._serve_file("refresh.js")
         if p == "/api/health":
             return self._json({"ok": True, "time": datetime.now(timezone.utc).isoformat()})
+        if p == "/api/cron/health":
+            return self._json(get_cron_health())
         if p == "/api/harness":
             return self._json(harness_health())
         if p == "/api/snapshot":
@@ -1180,8 +1176,6 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._json(get_tool_tracing(limit=20))
         if p == "/api/health-score":
             return self._json(get_health_score())
-        if p == "/api/cron/health":
-            return self._json(get_cron_health())
         if p == "/api/content/get":
             qs = {}
             if "?" in self.path:
